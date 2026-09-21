@@ -63,6 +63,19 @@ Foreman and Worker are distinct responsibilities.
 A Foreman optimizes aggregate throughput and correctness.
 A Worker optimizes sustained execution of an assigned objective.
 
+### Common turn reporting and propagation
+
+Every Foreman and Worker turn must emit the same minimum observability footer:
+
+- `START`: actual start of authorized turn work after bootstrap/state loading;
+- `END`: actual close after checkpoint, verification, and continuation handling for that turn;
+- `WORKED`: measured elapsed active turn duration from START to END;
+- `STATUS`: current durable state, distinguishing useful progress from wait, block, recovery, and verification states.
+
+This contract applies to normal turns and early exits. It is observability, not a productivity target: actors must never pad, fabricate, or round time upward.
+
+Any bootstrap, role prompt, delegation envelope, Worker/Foreman guide, or successor protocol that propagates runtime rules must carry or point to this common reporting contract. Role-specific guidance may add fields but must not remove these four.
+
 ### Checkpoint continuation
 
 Progress must be recorded at boundaries that permit a replacement actor to continue without depending on hidden conversational context.
