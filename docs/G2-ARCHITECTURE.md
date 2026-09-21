@@ -109,3 +109,17 @@ Parallel execution is allowed when work partitions have:
 - independent completion verification.
 
 When independence cannot be established, G2 falls back to serialization.
+
+### Claim granularity default
+
+`CURRENT_DEFAULT`: claims should be scoped to the smallest independently safe work partition that preserves the required conflict boundary, normally the exact subject plus its effect/conflict domains rather than an entire parent orchestration domain.
+
+A scoped claim must still preserve:
+
+- same-domain duplicate exclusion;
+- generation freshness and stale-generation rejection;
+- lease expiry/reclaim semantics;
+- effect-domain conflict checks;
+- fail-closed serialization whenever independence is ambiguous.
+
+This default is supported by the preregistered P7 deterministic claim-granularity benchmark: for the tested four-domain workload, scoped claims admitted 4 independent runnable units versus 1 under a coarse parent claim, reduced false serialization from 9 to 0, and reduced control operations per admitted unit from 12 to 3 while preserving the tested duplicate, generation, and lease invariants. This is bounded synthetic evidence, not a claim that every workload receives the same throughput gain.
