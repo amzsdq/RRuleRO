@@ -29,14 +29,25 @@ test('evidence excludes control and scheduler time from useful work', () => {
   assert.equal(s.lostByReason.queue_starvation, 35);
 });
 
-test('deterministic A/B harness evaluates predefined promotion criterion', () => {
+test('deterministic A/B harness can promote efficiency when safety is unchanged', () => {
   const result = comparePolicies(
     { name: 'A-short', envelopeMs: 5 * 60000, checkpointOverheadMs: 15000, continuationOverheadMs: 10000, continuationGapMs: 60000 },
     { name: 'B-long', envelopeMs: 12 * 60000, checkpointOverheadMs: 15000, continuationOverheadMs: 10000, continuationGapMs: 60000 },
     { usefulMs: 30 * 60000 }
   );
+  assert.equal(result.verdict, 'PROMOTE_B');
   assert.ok(result.B.score.usefulCoverage > result.A.score.usefulCoverage);
   assert.ok(result.B.score.overheadMs < result.A.score.overheadMs);
   assert.ok(result.B.score.schedulerGapMs < result.A.score.schedulerGapMs);
-  assert.match(result.promotionCriterion, /usefulCoverage/);
+});
+
+test('A/B harness refuses promotion when longer envelope increases recovery exposure', () => {
+  const result = comparePolicies(
+    { name: 'A-short', envelopeMs: 8 * 60000, durableCheckpointIntervalMs: 2 * 60000, checkpointOverheadMs: 15000, continuationOverheadMs: 10000, continuationGapMs: 60000, recoveryOverheadMs: 30000 },
+    { name: 'B-long', envelopeMs: 10 * 60000, durableCheckpointIntervalMs: 10 * 60000, checkpointOverheadMs: 15000, continuationOverheadMs: 10000, continuationGapMs: 60000, recoveryOverheadMs: 30000 },
+    { usefulMs: 30 * 60000, interruptions: [{ envelopeIndex: 1, afterUsefulMs: 9 * 60000 }] }
+  );
+  assert.equal(result.verdict, 'INCONCLUSIVE');
+  assert.ok(result.B.score.recoveryLossMs > result.A.score.recoveryLossMs);
+  assert.match(result.promotionCriterion, /recovery regression/);
 });
