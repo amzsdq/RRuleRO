@@ -15,6 +15,11 @@ const checks = [
   ["private-chat-url", /https?:\/\/(?:www\.)?chatgpt\.com\/(?:c|share|g)\//i],
   ["workflow-secret-reference", /\bsecrets\.[A-Za-z0-9_]+\b/],
   ["email-address", /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i],
+  ["private-predecessor-repository", /\bamzsdq\/R\b/i],
+  ["live-canonical-field", /\bcanonical_automation_id\b/i],
+  ["live-callback-field", /\bcallback_target\b/i],
+  ["conversation-identifier-field", /\bconversation_id\b/i],
+  ["live-role-identity", /\b(?:FOREMAN-G\d+|WORKER-[A-Z0-9-]{6,}|RESCUE-[A-Z0-9-]{4,})\b/],
 ];
 
 const findings = [];
