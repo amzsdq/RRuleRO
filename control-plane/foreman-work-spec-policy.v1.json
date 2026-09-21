@@ -1,0 +1,65 @@
+{
+  "policy_id": "R_FOREMAN_WORK_SPEC_POLICY",
+  "version": 1,
+  "record_prefix": "R_WORK_SPEC_V1 ",
+  "storage": {
+    "location": "CONTROLLING_ROOT_ISSUE_COMMENTS",
+    "history_mode": "APPEND_ONLY",
+    "human_readable_source": "CONTROLLING_ROOT_ISSUE_BODY_AND_CURRENT_SPEC_REVISION"
+  },
+  "ownership": {
+    "authoritative_editor_roles": [
+      "FOREMAN",
+      "DISPATCHER"
+    ],
+    "worker_may_edit": false,
+    "worker_may_challenge_via": "DESIGN_CHALLENGE"
+  },
+  "revision": {
+    "start": 1,
+    "monotonic": true,
+    "immutable_fields": [
+      "root_job_id",
+      "root_issue_number"
+    ],
+    "change_requires_new_revision": true
+  },
+  "required_fields": [
+    "root_goal",
+    "scope",
+    "non_goals",
+    "architectural_decisions",
+    "constraints",
+    "acceptance",
+    "authority_boundary"
+  ],
+  "relation_to_execution": {
+    "work_spec": "INTENT_CONSTRAINTS_ACCEPTANCE",
+    "milestone_ledger": "CURRENT_EXECUTION_STATE",
+    "work_assign": "BOUNDED_TASK_DELTA_REFERENCING_EXACT_WORK_SPEC_REVISION"
+  },
+  "assignment": {
+    "nontrivial_work_assign_requires_spec_ref": true,
+    "ref_fields": [
+      "root_job_id",
+      "root_issue_number",
+      "revision",
+      "comment_id"
+    ],
+    "copy_full_spec_into_message": false,
+    "recipient_must_verify_ref_before_substantive_work": true,
+    "stale_revision_action": "DESIGN_CHALLENGE_OR_REFRESH_BEFORE_WORK",
+    "assignment_may_narrow_but_not_expand_spec": true,
+    "contract_marker": "R_WORK_SPEC_V1",
+    "contract_field": "control.work_spec_contract",
+    "legacy_compatibility": "UNVERSIONED_EXISTING_WORK_ASSIGN_MAY_PASS; ALL_NEW_FOREMAN_DISPATCHER_SUBSTANTIVE_ASSIGNMENTS_MUST_SET_CONTRACT_AND_REF"
+  },
+  "invariants": [
+    "ONE_CANONICAL_ROOT_SPEC_LINEAGE_PER_ROOT_JOB",
+    "NO_FOREMAN_PRIVATE_PARALLEL_PLAN_AS_SOURCE_OF_TRUTH",
+    "SPEC_REVISION_NE_MILESTONE_STATE",
+    "WORK_ASSIGN_MUST_NOT_EXPAND_ROOT_SCOPE",
+    "SPEC_CHANGE_IS_APPEND_ONLY_NEW_REVISION",
+    "WORKER_EXECUTION_USES_EXACT_REFERENCED_REVISION"
+  ]
+}
