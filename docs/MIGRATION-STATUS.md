@@ -1,15 +1,41 @@
-# Migration Status
+# G2 Bootstrap Status
 
-Current phase: staged public-safe bootstrap.
+Current phase: public-first G2 architecture bootstrap.
 
-Imported so far:
-- Public security and contribution boundary.
-- Defensive public-safety scanner and read-only CI.
-- Reviewed durable job-state and lease-policy modules with matching tests.
-- Reviewed minimal shared result-policy dependency required by those tests.
+## Strategy change
 
-Not imported:
-- Private history, issues/comments, CI logs/artifacts, runtime ledgers, live control state, deployment identities, secret-backed workflows, private routing data, or operational transcripts.
-- Broader orchestration/control-message/work-spec clusters whose dependency and public-threat boundaries are not yet closed.
+The project no longer treats the private predecessor as a repository to migrate.
 
-Import remains default-deny. Additional code is admitted only after content review, dependency-closure review, public-safety checks, and passing no-secret CI.
+The predecessor is now a reference oracle for:
+- proven capabilities;
+- failure modes;
+- regression scenarios;
+- recovery semantics;
+- performance bottlenecks.
+
+G2 code is authored fresh unless a small existing public-safe module is explicitly retained as a reference seed after review.
+
+## Existing public-safe seed
+
+Before the G2 strategy change, a small dependency-closed set of generic policy modules and synthetic tests was admitted through public-safety gates.
+
+Those files are not automatically normative G2 architecture. G2 may keep, replace, relocate, or retire them based on capability-level review.
+
+## Never imported
+
+- private history, issues/comments, logs, artifacts, or incident payloads;
+- live runtime/control state;
+- deployment identities;
+- session/browser state;
+- private routing or callbacks;
+- secret-backed production workflows.
+
+## G2 admission rule
+
+New G2 work must be:
+1. authored for the public architecture;
+2. synthetic in fixtures and examples;
+3. deployment-neutral;
+4. dependency-boundary reviewed;
+5. public-safety clean;
+6. tested on the exact proposed head and again after merge.
