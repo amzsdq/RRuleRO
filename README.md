@@ -1,14 +1,30 @@
 # RRuleRO
 
-RRuleRO is the public successor runtime for a GitHub-backed multi-agent orchestration system.
+RRuleRO is a public-first G2 multi-agent orchestration runtime for sustained autonomous work with durable recovery.
 
-This repository starts from a fresh public history. Private operational history, live runtime state, credentials, session material, private routing data, and legacy incident evidence are intentionally excluded.
+G2 is not a mirror of a private predecessor. The predecessor is used only as a reference for proven capabilities, failure modes, and regression scenarios. G2 reimplements those capabilities against a clean public architecture with synthetic tests and deployment-neutral state.
+
+## G2 goals
+
+- sustained Worker useful-time, targeting 50–55 evidenced useful minutes per hour when runnable backlog is sufficient;
+- Foreman optimization of aggregate Worker utilization, dispatch, recovery, and verification rather than Foreman busy-time;
+- safe parallelism through dependency, conflict-domain, lease, and idempotency analysis;
+- replaceable scheduler/adapters;
+- cold resume from durable state;
+- independently verified completion;
+- public/private deployment separation from the start.
 
 ## Security boundary
 
-- No credentials, tokens, cookies, browser/session state, private chat links, personal email routing, or live callback destinations belong in this repository.
-- Live deployment state must not be committed.
-- Public CI is read-only by default. Privileged workflows require separate threat-model review.
-- Migration from the private predecessor is allowlist-only; bulk mirroring is prohibited.
+- No credentials, tokens, cookies, browser/session state, private chat links, personal email routing, live callback destinations, or deployment identities belong in this repository.
+- Private predecessor history and live state are not migrated.
+- Tests and examples use synthetic identifiers only.
+- Public CI is read-only by default.
+- Public changes are default-deny and must pass exact-head public-safety and unit gates before merge.
 
-See `SECURITY.md` and `docs/PUBLIC-MIGRATION-BOUNDARY.md`.
+See:
+
+- `docs/G2-ARCHITECTURE.md`
+- `docs/G2-CAPABILITY-CONTRACT.md`
+- `docs/G2-SECURITY-BOUNDARY.md`
+- `SECURITY.md`
