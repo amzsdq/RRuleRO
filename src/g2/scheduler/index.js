@@ -3,5 +3,6 @@
 module.exports = {
   continuation: require('./continuation'),
   fence: require('./fence'),
-  adapterContract: require('./adapter-contract')
+  adapterContract: require('./adapter-contract'),
+  outcome: require('./outcome')
 };
