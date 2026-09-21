@@ -1,0 +1,39 @@
+# Credentials and local secrets
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+*.secrets.*
+secrets/
+credentials/
+auth/
+cookies/
+session/
+sessions/
+browser-profile/
+storage-state/
+storage_state/
+playwright/.auth/
+
+# Local runtime state and evidence
+runtime/
+state/
+checkpoints/
+leases/
+outbox/
+artifacts/
+logs/
+*.log
+*.sqlite
+*.db
+
+# Tooling
+node_modules/
+coverage/
+.tmp/
+tmp/
+.DS_Store
