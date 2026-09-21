@@ -28,7 +28,7 @@ test('worker state machine rejects unsafe transitions', () => {
 });
 
 test('worker checkpoints are cold-resume oriented', () => {
-  let worker = workerRuntime.newWorker({ worker_id: 'WORKER-SYNTHETIC-A', objective_id: 'OBJECTIVE-A' });
+  let worker = workerRuntime.newWorker({ worker_id: 'ACTOR-SYNTHETIC-A', objective_id: 'OBJECTIVE-A' });
   worker = workerRuntime.evolve(worker, { next_state: 'CLAIMING' });
   worker = workerRuntime.evolve(worker, { next_state: 'RUNNING', useful_units_delta: 2 });
   worker = workerRuntime.evolve(worker, { next_state: 'CHECKPOINTING', checkpoint: true, checkpoint_ref: 'synthetic-ref' });
