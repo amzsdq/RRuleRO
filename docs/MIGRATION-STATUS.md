@@ -1,15 +1,53 @@
-# Migration Status
+# G2 Bootstrap Status
 
-Current phase: staged public-safe bootstrap.
+Current phase: public-first G2 architecture and core refactor.
 
-Imported so far:
-- Public security and contribution boundary.
-- Defensive public-safety scanner and read-only CI.
-- Reviewed durable job-state and lease-policy modules with matching tests.
-- Reviewed minimal shared result-policy dependency required by those tests.
+## Strategy
 
-Not imported:
-- Private history, issues/comments, CI logs/artifacts, runtime ledgers, live control state, deployment identities, secret-backed workflows, private routing data, or operational transcripts.
-- Broader orchestration/control-message/work-spec clusters whose dependency and public-threat boundaries are not yet closed.
+The private predecessor is not being migrated.
 
-Import remains default-deny. Additional code is admitted only after content review, dependency-closure review, public-safety checks, and passing no-secret CI.
+It is used only as a reference oracle for:
+- proven capabilities;
+- failure modes;
+- regression scenarios;
+- recovery semantics;
+- performance bottlenecks.
+
+G2 code is authored against a clean public architecture.
+
+## Refactor status
+
+The earlier root-level G1 seed policy modules have been retired from the G2 branch.
+
+Their useful capabilities were re-expressed as deployment-neutral G2 core modules under:
+
+- `src/g2/core/job-state.js`
+- `src/g2/core/lease.js`
+- `src/g2/core/outbox.js`
+- `src/g2/core/effect-recovery.js`
+- `src/g2/core/completion-verification.js`
+
+G2 tests use synthetic actors, targets, identities, and payloads.
+
+Historical transport-specific fields and deployment routing are intentionally not part of the core contract.
+
+## Never imported into G2
+
+- private history, issues/comments, logs, artifacts, or incident payloads;
+- live runtime/control state;
+- deployment identities;
+- session/browser state;
+- private routing or callbacks;
+- secret-backed production workflows.
+
+## Admission rule
+
+Every G2 change must be:
+1. authored for the public architecture;
+2. synthetic in fixtures and examples;
+3. deployment-neutral at the core layer;
+4. dependency-boundary reviewed;
+5. public-safety clean;
+6. tested on the exact proposed head and again after merge.
+
+The private predecessor remains useful as evidence, not as authority over G2 structure.
