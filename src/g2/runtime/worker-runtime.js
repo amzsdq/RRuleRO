@@ -2,10 +2,27 @@
 
 const { transition } = require('./worker-state');
 
+const WORKER_STATES = Object.freeze([
+  'IDLE', 'CLAIMED', 'RUNNING', 'CHECKPOINTING', 'VERIFYING',
+  'BLOCKED', 'COMPLETE', 'SUPERSEDED'
+]);
+
 function required(value, name) {
   const text = String(value || '').trim();
   if (!text) throw new Error(`${name} is required`);
   return text;
+}
+
+function nonNegativeInteger(value, name) {
+  const n = Number(value);
+  if (!Number.isSafeInteger(n) || n < 0) throw new Error(`${name} must be a non-negative safe integer`);
+  return n;
+}
+
+function nonNegativeNumber(value, name) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0) throw new Error(`${name} must be a non-negative number`);
+  return n;
 }
 
 function newWorker({ worker_id, objective_id } = {}) {
@@ -54,4 +71,36 @@ function resumableCheckpoint(worker, payload = {}, now = Date.now()) {
   });
 }
 
-module.exports = { newWorker, evolve, resumableCheckpoint };
+function resumeWorker(checkpoint = {}, { checkpoint_ref = '' } = {}) {
+  if (!checkpoint || checkpoint.type !== 'g2-worker-checkpoint' || checkpoint.version !== 1) {
+    throw new Error('valid g2 worker checkpoint required');
+  }
+  const state = required(checkpoint.worker_state, 'worker_state');
+  if (!WORKER_STATES.includes(state)) throw new Error('unknown worker state');
+  if (state === 'COMPLETE' || state === 'SUPERSEDED') {
+    throw new Error('terminal worker checkpoint cannot be resumed');
+  }
+
+  return Object.freeze({
+    type: 'g2-worker-runtime',
+    version: 1,
+    worker_id: required(checkpoint.worker_id, 'worker_id'),
+    objective_id: required(checkpoint.objective_id, 'objective_id'),
+    state,
+    checkpoint_seq: nonNegativeInteger(checkpoint.checkpoint_seq, 'checkpoint_seq'),
+    useful_units: nonNegativeNumber(checkpoint.useful_units, 'useful_units'),
+    last_checkpoint_ref: String(checkpoint_ref || '')
+  });
+}
+
+function checkpointFromDurableRecord(record, { checkpoint_ref = '' } = {}) {
+  if (!record || record.type !== 'g2-github-durable-state') throw new Error('valid durable state record required');
+  if (!record.checkpoint) throw new Error('durable state record has no checkpoint');
+  const worker = resumeWorker(record.checkpoint, { checkpoint_ref });
+  if (worker.objective_id !== record.logical_id) {
+    throw new Error('durable state logical identity does not match checkpoint objective');
+  }
+  return worker;
+}
+
+module.exports = { newWorker, evolve, resumableCheckpoint, resumeWorker, checkpointFromDurableRecord };
