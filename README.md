@@ -4,6 +4,27 @@ RRuleRO is a public-first G2 multi-agent orchestration runtime for sustained aut
 
 G2 is not a mirror of a private predecessor. The predecessor is used only as a reference for proven capabilities, failure modes, and regression scenarios. G2 reimplements those capabilities against a clean public architecture with synthetic tests and deployment-neutral state.
 
+## Quick start
+
+Requirements: Node.js 22+ and Git.
+
+```bash
+git clone https://github.com/amzsdq/RRuleRO.git
+cd RRuleRO
+npm test
+```
+
+The public package entrypoint is `src/g2/index.js` (also declared as `main` in `package.json`):
+
+```js
+const rrulero = require('./src/g2');
+const { product, adapters, runtime, foreman, scheduler } = rrulero;
+```
+
+For a non-GitHub durable workspace, start with `docs/PERSONAL-PROFILE.md`. The directory backend is directly runnable anywhere the host provides a durable filesystem. Connected-tool hosts can use the version-aware storage callback bridge and the scheduler host-callback bridge only when the host actually exposes the required writable storage and wake actions.
+
+**Current host boundary:** this repository does not claim that ChatGPT Library, Google Drive, or ChatGPT scheduling is natively wired by RRuleRO itself. A connector-specific claim requires a real writable/version-aware storage mapping and, for unattended continuation, a real scheduler mapping. If a ChatGPT environment lacks those host capabilities, use the GitHub profile or another writable Personal backend/wake provider rather than treating placeholders as a complete integration.
+
 ## G2 goals
 
 - sustained Worker useful-time, targeting 50–55 evidenced useful minutes per hour when runnable backlog is sufficient;
@@ -33,5 +54,6 @@ See:
 - `docs/G2-CAPABILITY-CONTRACT.md`
 - `docs/G2-PRODUCT-RUNTIME.md`
 - `docs/PERSONAL-PROFILE.md`
+- `docs/PROGRAM-COMPLETION.md`
 - `docs/G2-SECURITY-BOUNDARY.md`
 - `SECURITY.md`
