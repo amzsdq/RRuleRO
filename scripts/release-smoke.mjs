@@ -36,7 +36,7 @@ try {
   assert.equal(packed.length, 1);
   const meta = packed[0];
   assert.equal(meta.name, 'rrulero');
-  assert.equal(meta.version, '1.0.0-rc.2');
+  assert.equal(meta.version, '1.0.0-rc.3');
   assert.ok(meta.filename.endsWith('.tgz'));
   assert.ok(meta.files.some((x) => x.path === 'bin/rrulero.js'));
   assert.ok(meta.files.some((x) => x.path === 'src/g2/index.js'));
@@ -51,7 +51,7 @@ try {
 
   const requireProbe = run(process.execPath, ['-e', "const r=require('rrulero'); if(!r.product||!r.runtime) process.exit(2); process.stdout.write('PASS')"], { cwd: consumer });
   assert.equal(requireProbe, 'PASS');
-  assert.equal(run('npm', ['exec', '--', 'rrulero', 'version'], { cwd: consumer }), '1.0.0-rc.2');
+  assert.equal(run('npm', ['exec', '--', 'rrulero', 'version'], { cwd: consumer }), '1.0.0-rc.3');
   const bootstrap = run('npm', ['exec', '--', 'rrulero', 'bootstrap'], { cwd: consumer });
   assert.match(bootstrap, /RRuleRO SECTION BOOTSTRAP v1/);
   assert.match(bootstrap, /FAST_SESSION/);
