@@ -8,12 +8,23 @@ function required(value, name) {
   return text;
 }
 
+function list(value) {
+  return Array.isArray(value) ? Object.freeze([...new Set(value.map(String).map((x) => x.trim()).filter(Boolean))]) : Object.freeze([]);
+}
+
 function steps(value) {
   if (!Array.isArray(value) || value.length === 0) throw new Error('steps must be a non-empty array');
   return Object.freeze(value.map((step, index) => Object.freeze({
     id: String((step && step.id) || `step-${index + 1}`).trim(),
     description: required(step && step.description, 'step.description'),
-    blocking: Boolean(step && step.blocking)
+    blocking: Boolean(step && step.blocking),
+    work_domain: String((step && step.work_domain) || '').trim(),
+    conflict_domains: list(step && step.conflict_domains),
+    effect_domain: String((step && step.effect_domain) || '').trim(),
+    dependencies: list(step && step.dependencies),
+    verification_contract: String((step && step.verification_contract) || '').trim(),
+    intended_output: String((step && step.intended_output) || '').trim(),
+    priority: Number.isFinite(Number(step && step.priority)) ? Number(step.priority) : 100
   })));
 }
 
