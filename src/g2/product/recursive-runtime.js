@@ -34,4 +34,36 @@ function evaluateExperiment(experiment, baseline, candidate, options = {}) {
   });
 }
 
-module.exports = { startExperiment, evaluateExperiment };
+function requiredFunction(value, name) {
+  if (typeof value !== 'function') throw new Error(`${name} is required`);
+  return value;
+}
+
+async function runImprovementCycle(hooks = {}, options = {}) {
+  const observe = requiredFunction(hooks.observe, 'observe');
+  const generateCandidates = requiredFunction(hooks.generateCandidates, 'generateCandidates');
+  const implement = requiredFunction(hooks.implement, 'implement');
+  const measure = requiredFunction(hooks.measure, 'measure');
+
+  const observation = await observe();
+  const candidates = await generateCandidates(observation);
+  if (!Array.isArray(candidates)) throw new Error('generateCandidates must return an array');
+  const selection = recursive.selectImprovement(candidates, options);
+  if (selection.action === 'DO_NOTHING') {
+    return Object.freeze({ state: 'NO_CHANGE', observation, selection, experiment: null, result: null });
+  }
+
+  const implementation = await implement(selection.candidate, observation);
+  if (!implementation || typeof implementation !== 'object') throw new Error('implement must return experiment refs');
+  const experiment = startExperiment([selection.candidate], {
+    ...options,
+    stable_ref: implementation.stable_ref,
+    experimental_ref: implementation.experimental_ref
+  });
+  const measured = await measure({ observation, selection, implementation, experiment });
+  if (!measured || !measured.baseline || !measured.candidate) throw new Error('measure must return baseline and candidate samples');
+  const result = evaluateExperiment(experiment, measured.baseline, measured.candidate, options.evaluator || {});
+  return Object.freeze({ state: result.state, observation, selection, experiment, result });
+}
+
+module.exports = { startExperiment, evaluateExperiment, runImprovementCycle };
