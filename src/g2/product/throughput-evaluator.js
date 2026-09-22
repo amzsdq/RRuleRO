@@ -85,6 +85,7 @@ function compareThroughput(baselineInput, candidateInput, options = {}) {
   const usefulGain = c.useful_ratio - b.useful_ratio;
   const idleGain = b.idle_ratio - c.idle_ratio;
   const controlGain = b.control_ratio - c.control_ratio;
+  const blockedGain = b.blocked_ratio - c.blocked_ratio;
   const completionDelta = c.completion_rate - b.completion_rate;
   const duplicateDelta = c.duplicate_rate - b.duplicate_rate;
   const recoveryDelta = c.recovery_success_rate - b.recovery_success_rate;
@@ -97,7 +98,7 @@ function compareThroughput(baselineInput, candidateInput, options = {}) {
     return Object.freeze({
       decision: DECISIONS.REJECT,
       reason: 'QUALITY_OR_RECOVERY_COST_EXCEEDS_BUDGET',
-      deltas: Object.freeze({ usefulGain, idleGain, controlGain, completionDelta, duplicateDelta, recoveryDelta }),
+      deltas: Object.freeze({ usefulGain, idleGain, controlGain, blockedGain, completionDelta, duplicateDelta, recoveryDelta }),
       baseline: b,
       candidate: c
     });
@@ -105,13 +106,17 @@ function compareThroughput(baselineInput, candidateInput, options = {}) {
 
   const throughputImproved =
     usefulGain >= minUsefulGain ||
-    (usefulGain >= 0 && (idleGain >= minUsefulGain || controlGain >= minUsefulGain));
+    (usefulGain >= 0 && (
+      idleGain >= minUsefulGain ||
+      controlGain >= minUsefulGain ||
+      blockedGain >= minUsefulGain
+    ));
 
   if (throughputImproved && completionDelta >= 0 && duplicateDelta <= 0 && recoveryDelta >= 0) {
     return Object.freeze({
       decision: DECISIONS.ADOPT,
       reason: 'USEFUL_TIME_OR_OVERHEAD_IMPROVED_WITHOUT_PROTECTED_COST',
-      deltas: Object.freeze({ usefulGain, idleGain, controlGain, completionDelta, duplicateDelta, recoveryDelta }),
+      deltas: Object.freeze({ usefulGain, idleGain, controlGain, blockedGain, completionDelta, duplicateDelta, recoveryDelta }),
       baseline: b,
       candidate: c
     });
@@ -121,6 +126,7 @@ function compareThroughput(baselineInput, candidateInput, options = {}) {
     Math.abs(usefulGain) >= minUsefulGain ||
     Math.abs(idleGain) >= minUsefulGain ||
     Math.abs(controlGain) >= minUsefulGain ||
+    Math.abs(blockedGain) >= minUsefulGain ||
     completionDelta !== 0 ||
     duplicateDelta !== 0 ||
     recoveryDelta !== 0;
@@ -129,7 +135,7 @@ function compareThroughput(baselineInput, candidateInput, options = {}) {
     return Object.freeze({
       decision: DECISIONS.DO_NOTHING,
       reason: 'NO_MATERIAL_EXTERNAL_GAIN',
-      deltas: Object.freeze({ usefulGain, idleGain, controlGain, completionDelta, duplicateDelta, recoveryDelta }),
+      deltas: Object.freeze({ usefulGain, idleGain, controlGain, blockedGain, completionDelta, duplicateDelta, recoveryDelta }),
       baseline: b,
       candidate: c
     });
@@ -138,7 +144,7 @@ function compareThroughput(baselineInput, candidateInput, options = {}) {
   return Object.freeze({
     decision: DECISIONS.REVISE,
     reason: 'MIXED_OR_INSUFFICIENT_EVIDENCE',
-    deltas: Object.freeze({ usefulGain, idleGain, controlGain, completionDelta, duplicateDelta, recoveryDelta }),
+    deltas: Object.freeze({ usefulGain, idleGain, controlGain, blockedGain, completionDelta, duplicateDelta, recoveryDelta }),
     baseline: b,
     candidate: c
   });
