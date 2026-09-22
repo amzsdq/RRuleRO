@@ -10,5 +10,6 @@ module.exports = {
   reporting: require('./reporting'),
   humanInterface: require('./human-interface'),
   recursive: require('./recursive'),
+  recursiveRuntime: require('./recursive-runtime'),
   throughputEvaluator: require('./throughput-evaluator')
 };
