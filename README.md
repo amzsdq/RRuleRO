@@ -26,5 +26,6 @@ See:
 
 - `docs/G2-ARCHITECTURE.md`
 - `docs/G2-CAPABILITY-CONTRACT.md`
+- `docs/G2-PRODUCT-RUNTIME.md`
 - `docs/G2-SECURITY-BOUNDARY.md`
 - `SECURITY.md`
