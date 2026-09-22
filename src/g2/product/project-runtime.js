@@ -5,13 +5,24 @@ const planApi = require('./plan');
 const evidenceApi = require('./evidence');
 const { compileWorkItems } = require('./project-compiler');
 
+function executionSteps(input, intakeResult) {
+  if (Array.isArray(input.steps) && input.steps.length) return input.steps;
+  if (intakeResult.mode !== intake.MODES.FAST) throw new Error('steps must be provided for planned projects');
+  return [{
+    id: 'execute',
+    description: String(input.intent || '').trim(),
+    intended_output: String(input.intended_output || input.intent || '').trim(),
+    verification_contract: String(input.verification_contract || '').trim()
+  }];
+}
+
 function startProject(input = {}) {
   const intakeResult = intake.compileIntent(input);
   const evidence = evidenceApi.requireResearchEvidence(intakeResult, input.evidence || []);
   const plan = planApi.createPlan({
     plan_id: input.plan_id,
     goal: input.goal || input.intent,
-    steps: input.steps,
+    steps: executionSteps(input, intakeResult),
     approval_required: intakeResult.execution_gate === 'AWAIT_APPROVAL'
   });
   const planWithEvidence = evidence.length ? Object.freeze({ ...plan, evidence_refs: Object.freeze(evidence.map((x) => x.id)) }) : plan;
