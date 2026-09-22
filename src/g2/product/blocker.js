@@ -11,11 +11,21 @@ const BLOCKER_ACTIONS = Object.freeze({
 
 function normalizeAlternates(value) {
   if (!Array.isArray(value)) return [];
-  return value.map((x) => Object.freeze({
+  return value.map((x, index) => Object.freeze({
     id: String((x && x.id) || '').trim(),
     runnable: Boolean(x && x.runnable),
-    safe: x && x.safe !== false
+    safe: x && x.safe !== false,
+    useful_value: Number.isFinite(Number(x && x.useful_value)) ? Number(x.useful_value) : 0,
+    control_cost: Number.isFinite(Number(x && x.control_cost)) ? Math.max(0, Number(x.control_cost)) : 0,
+    order: index
   })).filter((x) => x.id);
+}
+
+function selectBestAlternate(alternates) {
+  return alternates
+    .filter((x) => x.runnable && x.safe)
+    .map((x) => ({ ...x, throughput_score: x.useful_value - x.control_cost }))
+    .sort((a, b) => (b.throughput_score - a.throughput_score) || (a.order - b.order))[0] || null;
 }
 
 function resolveBlocker(input = {}) {
@@ -24,7 +34,7 @@ function resolveBlocker(input = {}) {
   }
 
   const alternates = normalizeAlternates(input.alternate_paths);
-  const selected = alternates.find((x) => x.runnable && x.safe);
+  const selected = selectBestAlternate(alternates);
   if (selected) {
     return Object.freeze({
       action: BLOCKER_ACTIONS.CONTINUE_ALTERNATE,
