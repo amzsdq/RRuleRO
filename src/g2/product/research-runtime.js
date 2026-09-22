@@ -1,0 +1,5 @@
+'use strict';
+const intakeApi = require('./intake'); const evidenceApi = require('./evidence'); const projectRuntime = require('./project-runtime');
+async function gatherEvidence(input = {}, provider) { const intake = intakeApi.compileIntent(input); if (!intake.research_required) return Object.freeze([]); if (!provider || typeof provider.search !== 'function') throw new Error('research provider.search required'); const queries = Array.isArray(input.research_queries) && input.research_queries.length ? input.research_queries : [input.intent]; const raw = []; for (const query of queries) { const results = await provider.search({ query: String(query), depth: intake.research_depth, intent: intake.intent }); if (Array.isArray(results)) raw.push(...results); } const evidence = evidenceApi.normalizeEvidence(raw); if (!evidence.length) throw new Error('research required but provider returned no usable evidence'); return evidence; }
+async function startResearchedProject(input = {}, provider) { const evidence = await gatherEvidence(input, provider); return projectRuntime.startProject({ ...input, evidence }); }
+module.exports = { gatherEvidence, startResearchedProject };
