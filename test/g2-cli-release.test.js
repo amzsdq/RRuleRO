@@ -20,6 +20,14 @@ test('release package exposes a stable CLI version', () => {
   assert.equal(result.stdout.trim(), pkg.version);
 });
 
+test('CLI prints the canonical one-paste ChatGPT bootstrap', () => {
+  const result = run(['bootstrap']);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /RRuleRO SECTION BOOTSTRAP v1/);
+  assert.match(result.stdout, /FAST_SESSION/);
+  assert.match(result.stdout, /UNATTENDED/);
+});
+
 test('init + doctor provide a clean Personal directory first-run', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'rrulero-cli-'));
   try {
