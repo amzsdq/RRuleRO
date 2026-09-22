@@ -105,7 +105,7 @@ function compareThroughput(baselineInput, candidateInput, options = {}) {
 
   const throughputImproved =
     usefulGain >= minUsefulGain ||
-    (usefulGain >= 0 && (idleGain > 0 || controlGain > 0));
+    (usefulGain >= 0 && (idleGain >= minUsefulGain || controlGain >= minUsefulGain));
 
   if (throughputImproved && completionDelta >= 0 && duplicateDelta <= 0 && recoveryDelta >= 0) {
     return Object.freeze({
