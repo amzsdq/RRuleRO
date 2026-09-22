@@ -2,6 +2,18 @@
 
 All notable release-level changes are documented here.
 
+## 1.0.0-rc.3 — Minimal RRULE relay hot path
+
+### Relay runtime
+- Same canonical automation + recurring RRULE remains the normal ChatGPT Automation continuation model.
+- Normal clean-success relay uses one final scheduler mutation.
+- Default continuation lead is promoted from +1 minute to the measured ~+3 minute experimental baseline.
+- Clean matching update responses avoid a redundant scheduler metadata read-back.
+- Previous-wake evidence is separated from future next-wake evidence.
+- Tail-first state restoration and exception-first logging reduce normal control overhead.
+- Append-only canonical evidence is preferred over full ledger rewrites.
+- +3 minutes remains empirical/tunable; it is not a platform guarantee.
+
 ## 1.0.0-rc.2 — Progressive ChatGPT bootstrap
 
 ### ChatGPT install UX

@@ -3,7 +3,7 @@
 const DEFAULTS = Object.freeze({
   target_work_ms: 10 * 60 * 1000,
   provisional_safety_margin_ms: 3 * 60 * 1000,
-  fast_continuation_delay_ms: 60 * 1000,
+  fast_continuation_delay_ms: 3 * 60 * 1000,
   expected_due_tolerance_ms: 4 * 60 * 1000
 });
 
@@ -54,7 +54,9 @@ function planFastContinuation({
     generation: nextGeneration(generation),
     due_at: iso(due),
     reference_at: iso(closed),
-    verification_required: true
+    verification_required: false,
+    verification_mode: 'UPDATE_RESULT',
+    lead_status: delay_ms === DEFAULTS.fast_continuation_delay_ms ? 'EXPERIMENTAL_BASELINE' : 'OVERRIDE'
   });
 }
 

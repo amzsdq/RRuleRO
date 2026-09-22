@@ -11,7 +11,7 @@ This document covers release packaging. Runtime architecture and product accepta
 
 ## Current candidate
 
-The package metadata is `1.0.0-rc.2`. This candidate adds the one-paste ChatGPT section bootstrap and progressive activation model on top of the clean-install package path.
+The package metadata is `1.0.0-rc.3`. This candidate adds the one-paste ChatGPT section bootstrap and progressive activation model on top of the clean-install package path.
 
 ## Build and verify
 
@@ -29,7 +29,7 @@ npm pack
 ## Install from an artifact
 
 ```bash
-npm install ./rrulero-1.0.0-rc.2.tgz
+npm install ./rrulero-1.0.0-rc.3.tgz
 npx rrulero version
 npx rrulero bootstrap
 npx rrulero init --workspace ./rrulero-workspace

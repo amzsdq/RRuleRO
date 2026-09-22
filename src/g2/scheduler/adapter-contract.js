@@ -18,7 +18,7 @@ function validateSchedulerAdapter(adapter) {
 const CONTRACT = Object.freeze({
   read: 'Return the live schedule handle, enabled state, generation if supported, and next due time.',
   arm: 'Mutate or create the scheduler-specific wake representation for the same logical actor.',
-  verify: 'Independently read back and confirm the requested live schedule state.',
+  verify: 'Independently read back and confirm requested live schedule state when relay policy or exception handling requires it; clean update-result validation may skip invocation.',
   disable: 'Disable the logical actor schedule only after explicit terminal authority.'
 });
 
