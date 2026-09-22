@@ -1,0 +1,14 @@
+{
+  "name": "rrulero",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Persistent multi-agent orchestration runtime with durable recovery",
+  "main": "src/g2/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
