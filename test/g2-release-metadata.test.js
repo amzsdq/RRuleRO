@@ -6,7 +6,7 @@ const pkg = require('../package.json');
 
 test('release metadata is distributable and bounded', () => {
   assert.equal(pkg.name, 'rrulero');
-  assert.equal(pkg.version, '1.0.0-rc.1');
+  assert.equal(pkg.version, '1.0.0-rc.2');
   assert.notEqual(pkg.private, true);
   assert.equal(pkg.main, 'src/g2/index.js');
   assert.equal(pkg.bin.rrulero, 'bin/rrulero.js');
@@ -15,6 +15,7 @@ test('release metadata is distributable and bounded', () => {
   assert.ok(Array.isArray(pkg.files));
   assert.ok(pkg.files.includes('src/'));
   assert.ok(pkg.files.includes('bin/'));
+  assert.ok(pkg.files.includes('bootstrap/'));
   assert.ok(!pkg.files.includes('test/'));
   assert.ok(!pkg.files.includes('.github/'));
 });
