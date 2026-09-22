@@ -1,132 +1,19 @@
 'use strict';
-
-const WORK_STATES = Object.freeze([
-  'QUEUED', 'CLAIMED', 'DISPATCHED', 'RUNNING', 'VERIFYING',
-  'BLOCKED', 'COMPLETE', 'SUPERSEDED'
-]);
-const VERIFY_STATES = Object.freeze(['PASS', 'FAIL', 'PENDING', 'UNAVAILABLE']);
-const DECISIONS = Object.freeze(['DISPATCH', 'WAIT', 'REVIEW', 'SUPERSEDE']);
-
-function text(value, name) {
-  const result = String(value || '').trim();
-  if (!result) throw new Error(`${name} is required`);
-  return result;
-}
-
-function list(value) {
-  return Array.isArray(value) ? [...new Set(value.map(String).map(x => x.trim()).filter(Boolean))].sort() : [];
-}
-
-function normalizeWorkItem(input = {}) {
-  const state = text(input.state || 'QUEUED', 'state');
-  if (!WORK_STATES.includes(state)) throw new Error('unknown work state');
-  const generation = Number(input.generation);
-  if (!Number.isInteger(generation) || generation < 0) throw new Error('generation must be a non-negative integer');
-  const priority = Number.isFinite(Number(input.priority)) ? Number(input.priority) : 100;
-  const order = Number.isFinite(Number(input.order)) ? Number(input.order) : 0;
-  return Object.freeze({
-    work_id: text(input.work_id, 'work_id'),
-    generation,
-    objective_ref: text(input.objective_ref, 'objective_ref'),
-    subject_sha: text(input.subject_sha, 'subject_sha'),
-    state,
-    work_domain: text(input.work_domain, 'work_domain'),
-    conflict_domains: list(input.conflict_domains),
-    effect_domain: String(input.effect_domain || '').trim(),
-    dependencies: list(input.dependencies),
-    satisfied_dependencies: list(input.satisfied_dependencies),
-    verification_contract: String(input.verification_contract || '').trim(),
-    intended_output: String(input.intended_output || '').trim(),
-    priority,
-    order,
-    downstream_count: Math.max(0, Number(input.downstream_count) || 0),
-    recovery_or_verification: input.recovery_or_verification === true
-  });
-}
-
-function dependenciesReady(item) {
-  const satisfied = new Set(item.satisfied_dependencies);
-  return item.dependencies.every(dep => satisfied.has(dep));
-}
-
-function activeClaim(claim, now = Date.now()) {
-  if (!claim) return false;
-  const expires = Date.parse(claim.expires_at || '');
-  return Number.isFinite(expires) && expires > now && claim.state !== 'SUPERSEDED';
-}
-
-function sameClaimDomain(a, b) {
-  return Boolean(a && b && a.work_domain === b.work_domain && a.subject_sha === b.subject_sha && Number(a.claim_generation) === Number(b.claim_generation));
-}
-
-function reclaimable(claim, now = Date.now()) {
-  return Boolean(claim) && !activeClaim(claim, now);
-}
-
-function domainsConflict(a, b) {
-  if (a.work_domain === b.work_domain) return true;
-  if (a.effect_domain && b.effect_domain && a.effect_domain === b.effect_domain) return true;
-  const bDomains = new Set([b.work_domain, ...b.conflict_domains]);
-  const aDomains = new Set([a.work_domain, ...a.conflict_domains]);
-  return [a.work_domain, ...a.conflict_domains].some(x => bDomains.has(x)) ||
-    [b.work_domain, ...b.conflict_domains].some(x => aDomains.has(x));
-}
-
-function verifierOutcome(value) {
-  const state = text(value, 'verification state');
-  if (!VERIFY_STATES.includes(state)) throw new Error('unknown verification state');
-  return Object.freeze({
-    state,
-    accepted: state === 'PASS',
-    lost_time: state === 'UNAVAILABLE' ? 'VERIFICATION_WAIT' : null
-  });
-}
-
-function runnable(item, context = {}) {
-  if (item.state !== 'QUEUED') return false;
-  if (!dependenciesReady(item)) return false;
-  if (!item.verification_contract) return false;
-  if (context.current_subject_sha && item.subject_sha !== context.current_subject_sha) return false;
-  return !(context.active_items || []).some(other => other.work_id !== item.work_id && domainsConflict(item, other));
-}
-
-function rank(item) {
-  if (item.recovery_or_verification) return [0, 0, item.order, item.work_id];
-  if (item.downstream_count > 0) return [1, -item.downstream_count, item.order, item.work_id];
-  return [item.priority < 200 ? 2 : 3, item.priority, item.order, item.work_id];
-}
-
-function compareRank(a, b) {
-  const ar = rank(a); const br = rank(b);
-  for (let i = 0; i < ar.length; i += 1) {
-    if (ar[i] < br[i]) return -1;
-    if (ar[i] > br[i]) return 1;
-  }
-  return 0;
-}
-
-function runnableQueue(items, context = {}) {
-  const normalized = items.map(normalizeWorkItem);
-  const active = normalized.filter(x => ['CLAIMED', 'DISPATCHED', 'RUNNING', 'VERIFYING'].includes(x.state));
-  return normalized.filter(x => runnable(x, { ...context, active_items: active })).sort(compareRank);
-}
-
-function decide(item, context = {}) {
-  const work = normalizeWorkItem(item);
-  if (context.merged_equivalent === true) return 'SUPERSEDE';
-  if (context.current_subject_sha && work.subject_sha !== context.current_subject_sha) return 'REVIEW';
-  if (!dependenciesReady(work) || !work.verification_contract) return 'WAIT';
-  if ((context.active_items || []).some(other => other.work_id !== work.work_id && domainsConflict(work, other))) return 'WAIT';
-  return 'DISPATCH';
-}
-
-function programTerminal(items) {
-  const normalized = items.map(normalizeWorkItem);
-  return normalized.length > 0 && normalized.every(x => ['COMPLETE', 'SUPERSEDED'].includes(x.state));
-}
-
-module.exports = {
-  WORK_STATES, VERIFY_STATES, DECISIONS, normalizeWorkItem, dependenciesReady,
-  activeClaim, sameClaimDomain, reclaimable, domainsConflict, verifierOutcome,
-  runnable, runnableQueue, decide, programTerminal
-};
+const WORK_STATES=Object.freeze(['QUEUED','CLAIMED','DISPATCHED','RUNNING','VERIFYING','BLOCKED','COMPLETE','SUPERSEDED']);
+const VERIFY_STATES=Object.freeze(['PASS','FAIL','PENDING','UNAVAILABLE']); const DECISIONS=Object.freeze(['DISPATCH','WAIT','REVIEW','SUPERSEDE']);
+function text(value,name){const result=String(value||'').trim();if(!result)throw new Error(`${name} is required`);return result;}
+function list(value){return Array.isArray(value)?[...new Set(value.map(String).map(x=>x.trim()).filter(Boolean))].sort():[];}
+function normalizeWorkItem(input={}){const state=text(input.state||'QUEUED','state');if(!WORK_STATES.includes(state))throw new Error('unknown work state');const generation=Number(input.generation);if(!Number.isInteger(generation)||generation<0)throw new Error('generation must be a non-negative integer');const priority=Number.isFinite(Number(input.priority))?Number(input.priority):100;const order=Number.isFinite(Number(input.order))?Number(input.order):0;const verificationState=String(input.verification_state||'PENDING').trim().toUpperCase();if(!VERIFY_STATES.includes(verificationState))throw new Error('unknown verification state');return Object.freeze({work_id:text(input.work_id,'work_id'),generation,objective_ref:text(input.objective_ref,'objective_ref'),subject_sha:text(input.subject_sha,'subject_sha'),state,work_domain:text(input.work_domain,'work_domain'),conflict_domains:list(input.conflict_domains),effect_domain:String(input.effect_domain||'').trim(),dependencies:list(input.dependencies),satisfied_dependencies:list(input.satisfied_dependencies),verification_contract:String(input.verification_contract||'').trim(),verification_state:verificationState,intended_output:String(input.intended_output||'').trim(),priority,order,downstream_count:Math.max(0,Number(input.downstream_count)||0),recovery_or_verification:input.recovery_or_verification===true});}
+function dependenciesReady(item){const satisfied=new Set(item.satisfied_dependencies);return item.dependencies.every(dep=>satisfied.has(dep));}
+function activeClaim(claim,now=Date.now()){if(!claim)return false;const expires=Date.parse(claim.expires_at||'');return Number.isFinite(expires)&&expires>now&&claim.state!=='SUPERSEDED';}
+function sameClaimDomain(a,b){return Boolean(a&&b&&a.work_domain===b.work_domain&&a.subject_sha===b.subject_sha&&Number(a.claim_generation)===Number(b.claim_generation));}
+function reclaimable(claim,now=Date.now()){return Boolean(claim)&&!activeClaim(claim,now);}
+function domainsConflict(a,b){if(a.work_domain===b.work_domain)return true;if(a.effect_domain&&b.effect_domain&&a.effect_domain===b.effect_domain)return true;const bDomains=new Set([b.work_domain,...b.conflict_domains]);const aDomains=new Set([a.work_domain,...a.conflict_domains]);return[a.work_domain,...a.conflict_domains].some(x=>bDomains.has(x))||[b.work_domain,...b.conflict_domains].some(x=>aDomains.has(x));}
+function verifierOutcome(value){const state=text(value,'verification state');if(!VERIFY_STATES.includes(state))throw new Error('unknown verification state');return Object.freeze({state,accepted:state==='PASS',lost_time:state==='UNAVAILABLE'?'VERIFICATION_WAIT':null});}
+function runnable(item,context={}){if(item.state!=='QUEUED')return false;if(!dependenciesReady(item))return false;if(!item.verification_contract)return false;if(context.current_subject_sha&&item.subject_sha!==context.current_subject_sha)return false;return!(context.active_items||[]).some(other=>other.work_id!==item.work_id&&domainsConflict(item,other));}
+function rank(item){if(item.recovery_or_verification)return[0,0,item.order,item.work_id];if(item.downstream_count>0)return[1,-item.downstream_count,item.order,item.work_id];return[item.priority<200?2:3,item.priority,item.order,item.work_id];}
+function compareRank(a,b){const ar=rank(a),br=rank(b);for(let i=0;i<ar.length;i+=1){if(ar[i]<br[i])return-1;if(ar[i]>br[i])return 1;}return 0;}
+function runnableQueue(items,context={}){const normalized=items.map(normalizeWorkItem);const active=normalized.filter(x=>['CLAIMED','DISPATCHED','RUNNING','VERIFYING'].includes(x.state));return normalized.filter(x=>runnable(x,{...context,active_items:active})).sort(compareRank);}
+function decide(item,context={}){const work=normalizeWorkItem(item);if(context.merged_equivalent===true)return'SUPERSEDE';if(context.current_subject_sha&&work.subject_sha!==context.current_subject_sha)return'REVIEW';if(!dependenciesReady(work)||!work.verification_contract)return'WAIT';if((context.active_items||[]).some(other=>other.work_id!==work.work_id&&domainsConflict(work,other)))return'WAIT';return'DISPATCH';}
+function programTerminal(items){const normalized=items.map(normalizeWorkItem);return normalized.length>0&&normalized.every(x=>x.state==='SUPERSEDED'||(x.state==='COMPLETE'&&x.verification_state==='PASS'));}
+module.exports={WORK_STATES,VERIFY_STATES,DECISIONS,normalizeWorkItem,dependenciesReady,activeClaim,sameClaimDomain,reclaimable,domainsConflict,verifierOutcome,runnable,runnableQueue,decide,programTerminal};
