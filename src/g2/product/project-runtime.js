@@ -65,7 +65,8 @@ function approveProject(project, compile = {}) {
 
 function reviseProjectFromEvidence(project, input = {}) {
   if (!project || project.type !== 'g2-product-project') throw new Error('valid product project required');
-  if (!['RUNNING', 'AWAIT_APPROVAL'].includes(project.state)) throw new Error('project cannot be revised');
+  if (project.state === 'AWAIT_APPROVAL') throw new Error('project cannot be revised while awaiting approval');
+  if (project.state !== 'RUNNING') throw new Error('project cannot be revised');
   const incoming = evidenceApi.normalizeEvidence(input.evidence || []);
   if (!incoming.length) throw new Error('new evidence required');
   const merged = Object.freeze([...(project.evidence || []), ...incoming]);
