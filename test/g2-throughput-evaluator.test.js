@@ -54,14 +54,25 @@ test('returns DO_NOTHING when a proposed process change produces no material ext
   assert.equal(result.decision, 'DO_NOTHING');
 });
 
-test('returns REVISE for mixed evidence instead of blindly adopting meta-optimization', () => {
+test('returns REVISE for material throughput gain with a tolerated but unresolved quality tradeoff', () => {
+  const result = throughputEvaluator.compareThroughput(base, {
+    ...base,
+    useful_ms: 510000,
+    idle_ms: 30000,
+    control_ms: 60000,
+    completion_rate: 0.89
+  }, { min_useful_gain: 0.02, max_completion_loss: 0.02 });
+  assert.equal(result.decision, 'REVISE');
+});
+
+test('returns DO_NOTHING for sub-threshold throughput movement without external quality change', () => {
   const result = throughputEvaluator.compareThroughput(base, {
     ...base,
     useful_ms: 486000,
     idle_ms: 54000,
     completion_rate: 0.9
   }, { min_useful_gain: 0.02 });
-  assert.equal(result.decision, 'REVISE');
+  assert.equal(result.decision, 'DO_NOTHING');
 });
 
 test('invalid overlapping duration accounting fails closed', () => {
