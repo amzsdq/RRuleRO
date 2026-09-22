@@ -7,5 +7,6 @@ module.exports = {
   workerAdmission: require('./worker-admission'),
   livenessRecovery: require('./liveness-recovery'),
   saturation: require('./saturation'),
+  recoveryPolicy: require('./recovery-policy'),
   experiment: require('./experiment')
 };
