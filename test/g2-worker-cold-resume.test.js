@@ -12,7 +12,7 @@ const {
 
 test('cold resume reconstructs runtime from a checkpoint without conversational state', () => {
   let worker = newWorker({ worker_id: 'worker-a', objective_id: 'objective-a' });
-  worker = evolve(worker, { next_state: 'CLAIMED' });
+  worker = evolve(worker, { next_state: 'CLAIMING' });
   worker = evolve(worker, { next_state: 'RUNNING', useful_units_delta: 3 });
   worker = evolve(worker, { next_state: 'CHECKPOINTING', checkpoint: true, checkpoint_ref: 'ref-old' });
   const checkpoint = resumableCheckpoint(worker, { next_action: 'continue-step-2' }, 0);
@@ -50,12 +50,17 @@ test('durable record hydration rejects identity mismatch', () => {
 });
 
 test('terminal checkpoints cannot be resumed', () => {
-  for (const worker_state of ['COMPLETE', 'SUPERSEDED']) {
-    assert.throws(() => resumeWorker({
-      type: 'g2-worker-checkpoint', version: 1, worker_id: 'worker-a', objective_id: 'objective-a',
-      worker_state, checkpoint_seq: 1, useful_units: 1
-    }), /terminal worker checkpoint/);
-  }
+  assert.throws(() => resumeWorker({
+    type: 'g2-worker-checkpoint', version: 1, worker_id: 'worker-a', objective_id: 'objective-a',
+    worker_state: 'COMPLETE', checkpoint_seq: 1, useful_units: 1
+  }), /terminal worker checkpoint/);
+});
+
+test('unknown worker checkpoint states fail closed', () => {
+  assert.throws(() => resumeWorker({
+    type: 'g2-worker-checkpoint', version: 1, worker_id: 'worker-a', objective_id: 'objective-a',
+    worker_state: 'SUPERSEDED', checkpoint_seq: 1, useful_units: 1
+  }), /unknown worker state/);
 });
 
 test('malformed numeric checkpoint state fails closed', () => {
