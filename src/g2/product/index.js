@@ -10,6 +10,7 @@ module.exports = {
   profileSession: require('./profile-session'),
   hostReadiness: require('./host-readiness'),
   hostCapabilities: require('./host-capabilities'),
+  chatgptPersonalHost: require('./chatgpt-personal-host'),
   blocker: require('./blocker'),
   reporting: require('./reporting'),
   humanInterface: require('./human-interface'),
