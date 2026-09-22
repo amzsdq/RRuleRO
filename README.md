@@ -49,7 +49,7 @@ Requirements: Node.js 22+.
 Install an RRuleRO release tarball into a project:
 
 ```bash
-npm install ./rrulero-1.0.0-rc.2.tgz
+npm install ./rrulero-1.0.0-rc.3.tgz
 npx rrulero version
 npx rrulero bootstrap
 npx rrulero init --workspace ./rrulero-workspace
@@ -107,7 +107,7 @@ For a non-GitHub durable workspace, start with `docs/PERSONAL-PROFILE.md`. The d
 
 ## Release status
 
-The repository is prepared as `1.0.0-rc.2` with progressive ChatGPT bootstrap + clean-install package validation. Registry publication is intentionally not automatic. The package is marked `UNLICENSED` until the repository owner chooses an explicit public software license.
+The repository is prepared as `1.0.0-rc.3` with progressive ChatGPT bootstrap + clean-install package validation. Registry publication is intentionally not automatic. The package is marked `UNLICENSED` until the repository owner chooses an explicit public software license.
 
 ## Security boundary
 
