@@ -127,5 +127,6 @@ See:
 - `docs/CHATGPT-BOOTSTRAP.md`
 - `docs/PROGRAM-COMPLETION.md`
 - `docs/RELEASE.md`
+- `docs/RELAY-POLICY.md`
 - `SECURITY.md`
 - `CHANGELOG.md`
