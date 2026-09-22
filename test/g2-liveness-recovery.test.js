@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const { RECOVERY_ACTIONS, assessLiveness, recoveryPlan } = require('../src/g2/runtime/liveness-recovery');
 
 const claim = overrides => ({ work_id: 'work-1', worker_id: 'worker-1', expires_at: '2026-09-22T04:10:00.000Z', ...overrides });
-const checkpoint = overrides => ({ checkpoint_at: '2026-09-22T04:00:00.000Z', next_action: 'continue', ...overrides });
+const checkpoint = overrides => ({ type: 'g2-worker-checkpoint', version: 1, recorded_at: '2026-09-22T04:00:00.000Z', next_action: 'continue', ...overrides });
 
 test('expired lease is reclaimable and requeued', () => {
   const assessment = assessLiveness({ claim: claim(), now: Date.parse('2026-09-22T04:11:00.000Z') });
@@ -14,7 +14,7 @@ test('expired lease is reclaimable and requeued', () => {
 });
 
 test('fresh lease and checkpoint are healthy', () => {
-  const assessment = assessLiveness({ claim: claim(), checkpoint: checkpoint({ checkpoint_at: '2026-09-22T04:04:00.000Z' }), now: Date.parse('2026-09-22T04:05:00.000Z'), checkpoint_stale_ms: 120000 });
+  const assessment = assessLiveness({ claim: claim(), checkpoint: checkpoint({ recorded_at: '2026-09-22T04:04:00.000Z' }), now: Date.parse('2026-09-22T04:05:00.000Z'), checkpoint_stale_ms: 120000 });
   assert.equal(assessment.action, RECOVERY_ACTIONS.HEALTHY);
 });
 
@@ -32,4 +32,5 @@ test('active lease without checkpoint is not falsely reclaimed', () => {
 
 test('invalid timestamps fail closed', () => {
   assert.throws(() => assessLiveness({ claim: claim({ expires_at: 'bad' }) }), /ISO timestamp/);
+  assert.throws(() => assessLiveness({ claim: claim(), checkpoint: checkpoint({ recorded_at: 'bad' }) }), /ISO timestamp/);
 });
