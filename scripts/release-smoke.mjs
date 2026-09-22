@@ -36,11 +36,12 @@ try {
   assert.equal(packed.length, 1);
   const meta = packed[0];
   assert.equal(meta.name, 'rrulero');
-  assert.equal(meta.version, '1.0.0-rc.1');
+  assert.equal(meta.version, '1.0.0-rc.2');
   assert.ok(meta.filename.endsWith('.tgz'));
   assert.ok(meta.files.some((x) => x.path === 'bin/rrulero.js'));
   assert.ok(meta.files.some((x) => x.path === 'src/g2/index.js'));
   assert.ok(meta.files.some((x) => x.path === 'docs/RELEASE.md'));
+  assert.ok(meta.files.some((x) => x.path === 'bootstrap/RRULERO_CHATGPT_BOOTSTRAP.md'));
   assert.ok(!meta.files.some((x) => x.path.startsWith('test/')));
   assert.ok(!meta.files.some((x) => x.path.startsWith('.github/')));
 
@@ -50,7 +51,10 @@ try {
 
   const requireProbe = run(process.execPath, ['-e', "const r=require('rrulero'); if(!r.product||!r.runtime) process.exit(2); process.stdout.write('PASS')"], { cwd: consumer });
   assert.equal(requireProbe, 'PASS');
-  assert.equal(run('npm', ['exec', '--', 'rrulero', 'version'], { cwd: consumer }), '1.0.0-rc.1');
+  assert.equal(run('npm', ['exec', '--', 'rrulero', 'version'], { cwd: consumer }), '1.0.0-rc.2');
+  const bootstrap = run('npm', ['exec', '--', 'rrulero', 'bootstrap'], { cwd: consumer });
+  assert.match(bootstrap, /RRuleRO SECTION BOOTSTRAP v1/);
+  assert.match(bootstrap, /FAST_SESSION/);
 
   const init = JSON.parse(run('npm', ['exec', '--', 'rrulero', 'init', '--workspace', workspace], { cwd: consumer }));
   assert.equal(init.ok, true);
@@ -63,7 +67,7 @@ try {
 
   const profile = JSON.parse(fs.readFileSync(path.join(workspace, 'RRuleR', 'PROFILE.json'), 'utf8'));
   assert.equal(profile.profile, 'PERSONAL_DIRECTORY');
-  console.log(JSON.stringify({ ok: true, artifact: meta.filename, clean_install: 'PASS', package_require: 'PASS', cli_shim: 'PASS', doctor: 'PASS' }));
+  console.log(JSON.stringify({ ok: true, artifact: meta.filename, clean_install: 'PASS', package_require: 'PASS', cli_shim: 'PASS', bootstrap: 'PASS', doctor: 'PASS' }));
 } finally {
   fs.rmSync(temp, { recursive: true, force: true });
 }
