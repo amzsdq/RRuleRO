@@ -61,6 +61,16 @@ UNATTENDED requires:
 
 If either is missing, do not pretend unattended persistence exists.
 
+When ChatGPT Automation RRULE is the wake provider, use the minimal normal relay hot path:
+- keep the same canonical automation id;
+- keep recurring `RRULE:FREQ=HOURLY`;
+- perform one final scheduler update after useful work/checkpointing;
+- compute next due from actual time immediately before that final update;
+- default to the current empirical ~+3 minute lead class unless fresher durable evidence promotes another value;
+- inspect the update result for intended id / DTSTART / RRULE / enabled state;
+- on clean match, do not spend another tool call on routine metadata read-back;
+- treat +3 minutes as an experimental baseline, never a platform guarantee.
+
 ## 2. Workspace selection
 
 Default to AUTO.
