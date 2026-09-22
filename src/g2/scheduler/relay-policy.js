@@ -18,18 +18,19 @@ function parseTimestamp(value, name) {
   return ms;
 }
 
-function compactLocalDate(ms) {
-  const d = new Date(ms);
-  const pad = (n) => String(n).padStart(2, '0');
-  return [
-    d.getUTCFullYear(),
-    pad(d.getUTCMonth() + 1),
-    pad(d.getUTCDate()),
-    'T',
-    pad(d.getUTCHours()),
-    pad(d.getUTCMinutes()),
-    pad(d.getUTCSeconds())
-  ].join('');
+function compactZonedDate(ms, timezone) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23'
+  }).formatToParts(new Date(ms));
+  const map = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${map.year}${map.month}${map.day}T${map.hour}${map.minute}${map.second}`;
 }
 
 function planFinalRecurringWake({
@@ -59,7 +60,7 @@ function planFinalRecurringWake({
     scheduler_mutations_expected: 1,
     schedule: [
       'BEGIN:VEVENT',
-      'DTSTART;TZID=' + tz + ':' + compactLocalDate(due),
+      'DTSTART;TZID=' + tz + ':' + compactZonedDate(due, tz),
       'RRULE:' + rrule,
       'END:VEVENT'
     ].join('\n')
