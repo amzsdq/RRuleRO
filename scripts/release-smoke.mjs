@@ -48,21 +48,22 @@ try {
   fs.writeFileSync(path.join(consumer, 'package.json'), JSON.stringify({ private: true }, null, 2));
   run('npm', ['install', tarball, '--ignore-scripts'], { cwd: consumer });
 
-  const bin = path.join(consumer, 'node_modules', 'rrulero', 'bin', 'rrulero.js');
-  assert.equal(run(process.execPath, [bin, 'version'], { cwd: consumer }), '1.0.0-rc.1');
+  const requireProbe = run(process.execPath, ['-e', "const r=require('rrulero'); if(!r.product||!r.runtime) process.exit(2); process.stdout.write('PASS')"], { cwd: consumer });
+  assert.equal(requireProbe, 'PASS');
+  assert.equal(run('npm', ['exec', '--', 'rrulero', 'version'], { cwd: consumer }), '1.0.0-rc.1');
 
-  const init = JSON.parse(run(process.execPath, [bin, 'init', '--workspace', workspace], { cwd: consumer }));
+  const init = JSON.parse(run('npm', ['exec', '--', 'rrulero', 'init', '--workspace', workspace], { cwd: consumer }));
   assert.equal(init.ok, true);
   assert.equal(init.profile, 'PERSONAL_DIRECTORY');
 
-  const doctor = JSON.parse(run(process.execPath, [bin, 'doctor', '--workspace', workspace], { cwd: consumer }));
+  const doctor = JSON.parse(run('npm', ['exec', '--', 'rrulero', 'doctor', '--workspace', workspace], { cwd: consumer }));
   assert.equal(doctor.ok, true);
   assert.equal(doctor.durable_storage, 'PASS');
   assert.equal(doctor.versioned_cas, 'PASS');
 
   const profile = JSON.parse(fs.readFileSync(path.join(workspace, 'RRuleR', 'PROFILE.json'), 'utf8'));
   assert.equal(profile.profile, 'PERSONAL_DIRECTORY');
-  console.log(JSON.stringify({ ok: true, artifact: meta.filename, clean_install: 'PASS', cli: 'PASS', doctor: 'PASS' }));
+  console.log(JSON.stringify({ ok: true, artifact: meta.filename, clean_install: 'PASS', package_require: 'PASS', cli_shim: 'PASS', doctor: 'PASS' }));
 } finally {
   fs.rmSync(temp, { recursive: true, force: true });
 }
