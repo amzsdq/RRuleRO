@@ -31,16 +31,9 @@ function steps(value) {
 function createPlan(input = {}) {
   const approvalRequired = input.approval_required === true;
   return Object.freeze({
-    type: 'g2-product-plan',
-    version: 1,
-    plan_id: required(input.plan_id, 'plan_id'),
-    revision: 1,
-    goal: required(input.goal, 'goal'),
-    state: approvalRequired ? 'DRAFT' : 'ACTIVE',
-    approval_required: approvalRequired,
-    steps: steps(input.steps),
-    evidence_refs: Object.freeze([]),
-    supersedes_revision: null
+    type: 'g2-product-plan', version: 1, plan_id: required(input.plan_id, 'plan_id'), revision: 1,
+    goal: required(input.goal, 'goal'), state: approvalRequired ? 'DRAFT' : 'ACTIVE', approval_required: approvalRequired,
+    steps: steps(input.steps), evidence_refs: Object.freeze([]), supersedes_revision: null
   });
 }
 
@@ -60,7 +53,7 @@ function revisePlan(plan, input = {}) {
   return Object.freeze({
     ...plan,
     revision: plan.revision + 1,
-    state: 'REVISED',
+    state: plan.state === 'DRAFT' ? 'DRAFT' : 'REVISED',
     steps: nextSteps,
     evidence_refs: Object.freeze([...plan.evidence_refs, ...evidenceRefs]),
     revision_reason: reason,
