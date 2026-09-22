@@ -1,11 +1,6 @@
 'use strict';
 
-const { transition } = require('./worker-state');
-
-const WORKER_STATES = Object.freeze([
-  'IDLE', 'CLAIMED', 'RUNNING', 'CHECKPOINTING', 'VERIFYING',
-  'BLOCKED', 'COMPLETE', 'SUPERSEDED'
-]);
+const { STATES, terminal, transition } = require('./worker-state');
 
 function required(value, name) {
   const text = String(value || '').trim();
@@ -76,10 +71,8 @@ function resumeWorker(checkpoint = {}, { checkpoint_ref = '' } = {}) {
     throw new Error('valid g2 worker checkpoint required');
   }
   const state = required(checkpoint.worker_state, 'worker_state');
-  if (!WORKER_STATES.includes(state)) throw new Error('unknown worker state');
-  if (state === 'COMPLETE' || state === 'SUPERSEDED') {
-    throw new Error('terminal worker checkpoint cannot be resumed');
-  }
+  if (!STATES.includes(state)) throw new Error('unknown worker state');
+  if (terminal(state)) throw new Error('terminal worker checkpoint cannot be resumed');
 
   return Object.freeze({
     type: 'g2-worker-runtime',
