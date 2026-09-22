@@ -32,6 +32,12 @@ Before ending a turn as blocked, the runtime checks for another safe runnable pa
 
 Only after reasonable safe alternatives are exhausted may the turn surface user-action, user-decision, external-block, or risk status.
 
+### Project compilation
+
+Executable plans compile directly into the existing canonical Foreman work-item contract. The product layer does not introduce a second queue or scheduler. Dependencies, conflict/effect domains, verification contracts, and intended outputs flow into the existing Foreman runtime.
+
+Ordinary PLANNED projects therefore move from intent → active plan → queued work without an approval wait. Only APPROVAL_REQUIRED projects remain DRAFT until explicit approval.
+
 ### Reporting
 
 Machine state stays exact. User reports remain compact.
