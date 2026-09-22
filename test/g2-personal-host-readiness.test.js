@@ -10,7 +10,7 @@ test('Personal unattended readiness requires both durable state and complete wak
   assert.equal(product.hostReadiness.validatePersonalHostReadiness({ profile, scheduler }).ready, true);
   const storageOnly = product.hostReadiness.validatePersonalHostReadiness({ profile });
   assert.equal(storageOnly.ready, false);
-  assert.deepEqual(storageOnly.missing.sort(), ['scheduler.arm', 'scheduler.disable', 'scheduler.read', 'scheduler.verify']);
+  assert.deepEqual([...storageOnly.missing].sort(), ['scheduler.arm', 'scheduler.disable', 'scheduler.read', 'scheduler.verify']);
 });
 
 test('research-required host readiness fails closed without a provider', () => {
