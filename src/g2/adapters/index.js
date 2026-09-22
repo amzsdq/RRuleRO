@@ -2,5 +2,6 @@
 
 module.exports = {
   githubDurableState: require('./github-durable-state'),
+  githubProfile: require('./github-profile'),
   personalWorkspace: require('./personal-workspace')
 };
