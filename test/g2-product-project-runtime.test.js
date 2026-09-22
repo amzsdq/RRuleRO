@@ -4,6 +4,30 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { projectRuntime } = require('../src/g2/product');
 
+test('FAST request becomes runnable work without requiring plan-step ceremony', () => {
+  const project = projectRuntime.startProject({
+    intent: 'rewrite this paragraph',
+    plan_id: 'fast-direct',
+    objective_ref: 'request:fast',
+    subject_sha: 'synthetic-sha'
+  });
+  assert.equal(project.state, 'RUNNING');
+  assert.equal(project.intake.mode, 'FAST');
+  assert.equal(project.intake.plan_preview, 'NONE');
+  assert.equal(project.work_items.length, 1);
+  assert.equal(project.work_items[0].intended_output, 'rewrite this paragraph');
+});
+
+test('PLANNED request still requires explicit decomposed steps', () => {
+  assert.throws(() => projectRuntime.startProject({
+    intent: 'build a multi-stage feature',
+    plan_id: 'missing-plan',
+    multi_stage: true,
+    objective_ref: 'issue:synthetic',
+    subject_sha: 'synthetic-sha'
+  }), /steps must be provided/);
+});
+
 test('ordinary multi-stage project begins runnable work without waiting for plan approval', () => {
   const project = projectRuntime.startProject({
     intent: 'build a multi-stage feature',
