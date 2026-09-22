@@ -1,6 +1,6 @@
 {
   "name": "rrulero",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0-rc.2",
   "description": "Persistent multi-agent orchestration runtime with durable recovery",
   "main": "src/g2/index.js",
   "exports": {
@@ -12,6 +12,7 @@
   "files": [
     "bin/",
     "src/",
+    "bootstrap/",
     "docs/",
     "README.md",
     "SECURITY.md",
