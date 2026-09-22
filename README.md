@@ -23,7 +23,7 @@ const { product, adapters, runtime, foreman, scheduler } = rrulero;
 
 For a non-GitHub durable workspace, start with `docs/PERSONAL-PROFILE.md`. The directory backend is directly runnable anywhere the host provides a durable filesystem. Connected-tool hosts can use the version-aware storage callback bridge and the scheduler host-callback bridge only when the host actually exposes the required writable storage and wake actions.
 
-**Current host boundary:** this repository does not claim that ChatGPT Library, Google Drive, or ChatGPT scheduling is natively wired by RRuleRO itself. A connector-specific claim requires a real writable/version-aware storage mapping and, for unattended continuation, a real scheduler mapping. If a ChatGPT environment lacks those host capabilities, use the GitHub profile or another writable Personal backend/wake provider rather than treating placeholders as a complete integration.
+**Verified ChatGPT Personal host mapping:** the current ChatGPT host can satisfy the Personal contract with Google Drive/Docs as version-aware durable storage (`revisionId` + `batchUpdate.writeControl.requiredRevisionId`), ChatGPT Automations as the verified wake provider, and web research tools when research is justified. The repository mapping is exported as `product.chatgptPersonalHost`. Host availability remains capability-gated: deployments that do not expose these tools must use another conforming Personal backend/wake provider or the GitHub profile.
 
 ## G2 goals
 
@@ -38,7 +38,7 @@ For a non-GitHub durable workspace, start with `docs/PERSONAL-PROFILE.md`. The d
 ## Product profiles
 
 - **GitHub**: advanced/reference profile with repository-backed auditability and orchestration.
-- **Personal**: non-GitHub profile over a versioned durable text workspace; see `docs/PERSONAL-PROFILE.md` for the user flow and concrete directory backend.
+- **Personal**: non-GitHub profile over a versioned durable text workspace; see `docs/PERSONAL-PROFILE.md` for the user flow and concrete directory backend. Current ChatGPT hosts with the mapped Drive/Docs + Automations capabilities can satisfy the same profile contract without GitHub.
 
 ## Security boundary
 
