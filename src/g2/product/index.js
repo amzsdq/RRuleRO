@@ -2,6 +2,7 @@
 
 module.exports = {
   intake: require('./intake'),
+  evidence: require('./evidence'),
   plan: require('./plan'),
   projectCompiler: require('./project-compiler'),
   projectRuntime: require('./project-runtime'),
