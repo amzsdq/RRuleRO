@@ -17,7 +17,10 @@ test('normal close creates completion-relative fast continuation', () => {
     generation: 5
   });
   assert.equal(plan.generation, 6);
-  assert.equal(plan.due_at, '2026-01-01T00:11:30.000Z');
+  assert.equal(plan.due_at, '2026-01-01T00:13:30.000Z');
+  assert.equal(plan.verification_required, false);
+  assert.equal(plan.verification_mode, 'UPDATE_RESULT');
+  assert.equal(plan.lead_status, 'EXPERIMENTAL_BASELINE');
 });
 
 test('stale wake always recovers forward', () => {
