@@ -7,5 +7,6 @@ module.exports = {
   projectRuntime: require('./project-runtime'),
   blocker: require('./blocker'),
   reporting: require('./reporting'),
-  recursive: require('./recursive')
+  recursive: require('./recursive'),
+  throughputEvaluator: require('./throughput-evaluator')
 };
