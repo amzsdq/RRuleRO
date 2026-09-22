@@ -18,6 +18,15 @@ test('normal relay uses same recurring automation and one +3m final mutation', (
   assert.match(plan.schedule, /RRULE:FREQ=HOURLY/);
 });
 
+test('TZID DTSTART uses the declared local timezone rather than UTC wall clock', () => {
+  const plan = relay.planFinalRecurringWake({
+    now: '2026-09-22T12:00:00Z',
+    automation_id: 'synthetic-auto',
+    timezone: 'Asia/Seoul'
+  });
+  assert.match(plan.schedule, /DTSTART;TZID=Asia\/Seoul:20260922T210300/);
+});
+
 test('clean update result removes normal readback requirement', () => {
   const intent = relay.planFinalRecurringWake({
     now: '2026-09-22T12:00:00Z',
