@@ -4,6 +4,42 @@ RRuleRO is a public-first G2 multi-agent orchestration runtime for sustained aut
 
 G2 is not a mirror of a private predecessor. The predecessor is used only as a reference for proven capabilities, failure modes, and regression scenarios. G2 reimplements those capabilities against a clean public architecture with synthetic tests and deployment-neutral state.
 
+## ChatGPT: one-paste section bootstrap
+
+For a normal ChatGPT conversation, RRuleRO can start without asking for a full workspace up front.
+
+Use the canonical bootstrap payload:
+
+`bootstrap/RRULERO_CHATGPT_BOOTSTRAP.md`
+
+After package installation, print it with:
+
+```bash
+npx rrulero bootstrap
+```
+
+Paste or provide that payload to a fresh ChatGPT section. This is **section-level runtime initialization**, not operating-system package installation.
+
+The bootstrap uses progressive activation:
+
+```text
+FAST_SESSION
+    ↓ continuity becomes useful
+MINI_STATE
+    ↓ durable recovery/project state becomes justified
+DURABLE_PROJECT
+    ↓ unattended continuation is requested and wake is verified
+UNATTENDED
+```
+
+- FAST_SESSION starts useful work immediately with no workspace question.
+- MINI_STATE uses only `RRuleR_SESSION.json` when a tiny continuity record is useful and a low-cost versioned store is already available.
+- DURABLE_PROJECT creates the full workspace only when persistence/recovery is justified.
+- UNATTENDED additionally requires a verified wake provider.
+- Workspace selection defaults to AUTO. Existing bindings/user preferences win; equivalent choices trigger a single question.
+
+See `docs/CHATGPT-BOOTSTRAP.md` for the product semantics.
+
 ## Install and first run
 
 Requirements: Node.js 22+.
@@ -13,13 +49,14 @@ Requirements: Node.js 22+.
 Install an RRuleRO release tarball into a project:
 
 ```bash
-npm install ./rrulero-1.0.0-rc.1.tgz
+npm install ./rrulero-1.0.0-rc.2.tgz
 npx rrulero version
+npx rrulero bootstrap
 npx rrulero init --workspace ./rrulero-workspace
 npx rrulero doctor --workspace ./rrulero-workspace
 ```
 
-`init` creates a Personal directory workspace with the standard RRuleR documents. `doctor` verifies real read/write and stale-version CAS rejection. The directory profile supplies durable state; unattended continuation additionally requires a verified wake provider supplied by the execution host.
+`init` creates a full Personal directory workspace. Use it when a durable project workspace is already known to be appropriate. `doctor` verifies real read/write and stale-version CAS rejection. The directory profile supplies durable state; unattended continuation additionally requires a verified wake provider supplied by the execution host.
 
 ### Build the release artifact from source
 
@@ -70,7 +107,7 @@ For a non-GitHub durable workspace, start with `docs/PERSONAL-PROFILE.md`. The d
 
 ## Release status
 
-The repository is prepared as `1.0.0-rc.1` for clean-install release-candidate validation. Registry publication is intentionally not automatic. The package is marked `UNLICENSED` until the repository owner chooses an explicit public software license.
+The repository is prepared as `1.0.0-rc.2` with progressive ChatGPT bootstrap + clean-install package validation. Registry publication is intentionally not automatic. The package is marked `UNLICENSED` until the repository owner chooses an explicit public software license.
 
 ## Security boundary
 
@@ -87,6 +124,7 @@ See:
 - `docs/G2-CAPABILITY-CONTRACT.md`
 - `docs/G2-PRODUCT-RUNTIME.md`
 - `docs/PERSONAL-PROFILE.md`
+- `docs/CHATGPT-BOOTSTRAP.md`
 - `docs/PROGRAM-COMPLETION.md`
 - `docs/RELEASE.md`
 - `SECURITY.md`

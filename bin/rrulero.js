@@ -13,10 +13,12 @@ function usage() {
     '',
     'Usage:',
     '  rrulero version',
+    '  rrulero bootstrap',
     '  rrulero init --workspace <directory> [--force]',
     '  rrulero doctor --workspace <directory>',
     '  rrulero help',
     '',
+    'bootstrap prints the one-paste ChatGPT section bootstrap payload.',
     'The local CLI initializes and validates the Personal directory profile.',
     'Unattended continuation additionally requires a verified wake provider from the host.'
   ].join('\n');
@@ -151,6 +153,11 @@ async function main() {
   }
   if (command === 'version' || command === '--version' || command === '-v') {
     process.stdout.write(pkg.version + '\n');
+    return;
+  }
+  if (command === 'bootstrap') {
+    const bootstrap = await fs.readFile(path.resolve(__dirname, '../bootstrap/RRULERO_CHATGPT_BOOTSTRAP.md'), 'utf8');
+    process.stdout.write(bootstrap.endsWith('\n') ? bootstrap : bootstrap + '\n');
     return;
   }
   if (command === 'init') return init(options);

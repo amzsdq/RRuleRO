@@ -2,6 +2,21 @@
 
 The Personal profile is the non-GitHub product path. It uses the same durable continuation semantics as the GitHub reference profile while hiding repository-specific control details from the user.
 
+## Progressive section activation
+
+A fresh ChatGPT section does not need a full Personal workspace immediately.
+
+RRuleRO uses the minimum sufficient mode:
+
+- `FAST_SESSION`: no workspace and no state file.
+- `MINI_STATE`: one `RRuleR_SESSION.json` continuity document when useful.
+- `DURABLE_PROJECT`: full Personal/GitHub workspace for recovery-sensitive or multi-stage work.
+- `UNATTENDED`: durable project plus verified wake.
+
+The canonical one-paste payload is `bootstrap/RRULERO_CHATGPT_BOOTSTRAP.md`. See `docs/CHATGPT-BOOTSTRAP.md`.
+
+Promotion preserves the active goal and completed work. It must not restart the task merely because persistence requirements changed.
+
 ## User flow
 
 1. Choose durable storage available to the host (for example a connected Drive/Library-style text store, or a durable directory).

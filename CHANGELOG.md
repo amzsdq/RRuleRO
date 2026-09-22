@@ -2,6 +2,22 @@
 
 All notable release-level changes are documented here.
 
+## 1.0.0-rc.2 — Progressive ChatGPT bootstrap
+
+### ChatGPT install UX
+- One-paste section bootstrap payload included in the release artifact.
+- Progressive activation: FAST_SESSION -> MINI_STATE -> DURABLE_PROJECT -> UNATTENDED.
+- FAST work no longer pays mandatory workspace setup cost.
+- MINI_STATE can keep one tiny continuity document without creating the full project workspace.
+- Durable/unattended claims fail closed unless storage/wake capabilities are actually verified.
+- Workspace AUTO selection reuses existing bindings/preferences and asks only when viable choices are materially equivalent.
+- Promotions preserve current task state instead of restarting work.
+- `rrulero bootstrap` prints the canonical payload from the installed package.
+
+### Distribution
+- Release smoke verifies the bootstrap file survives `npm pack` and is usable through the installed CLI.
+- Package candidate bumped to `1.0.0-rc.2`.
+
 ## 1.0.0-rc.1 — Release candidate
 
 ### Product
