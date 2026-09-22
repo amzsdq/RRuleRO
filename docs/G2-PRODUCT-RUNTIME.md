@@ -44,6 +44,22 @@ Machine state stays exact. User reports remain compact.
 
 The renderer requires observed start/end and explicit evidenced useful-work duration. It rejects worked time greater than elapsed runtime.
 
+### Throughput-first improvement evaluation
+
+Recursive/runtime improvements are evaluated against externally observable system outcomes, not rule count or process complexity.
+
+The default comparison uses:
+- useful-time ratio;
+- avoidable idle-time ratio;
+- control-overhead ratio;
+- completion quality;
+- duplicate/conflicting work rate;
+- recovery success.
+
+A candidate is ADOPTED only when useful time or avoidable overhead improves without degrading protected correctness/security/recoverability outcomes. Protected-outcome regression forces ROLLBACK. Quality/recovery tradeoffs outside the declared budget are REJECTED. Mixed evidence is REVISE, and no material external gain is DO_NOTHING.
+
+This prevents recursive development from becoming a self-sustaining meta-work loop that consumes the working-time it is supposed to improve.
+
 ### Recursive development
 
 Valid improvement actions include ADD, MODIFY, SIMPLIFY, REMOVE, and DO_NOTHING.
