@@ -14,6 +14,11 @@ G2 is not a mirror of a private predecessor. The predecessor is used only as a r
 - independently verified completion;
 - public/private deployment separation from the start.
 
+## Product profiles
+
+- **GitHub**: advanced/reference profile with repository-backed auditability and orchestration.
+- **Personal**: non-GitHub profile over a versioned durable text workspace; see `docs/PERSONAL-PROFILE.md` for the user flow and concrete directory backend.
+
 ## Security boundary
 
 - No credentials, tokens, cookies, browser/session state, private chat links, personal email routing, live callback destinations, or deployment identities belong in this repository.
@@ -27,5 +32,6 @@ See:
 - `docs/G2-ARCHITECTURE.md`
 - `docs/G2-CAPABILITY-CONTRACT.md`
 - `docs/G2-PRODUCT-RUNTIME.md`
+- `docs/PERSONAL-PROFILE.md`
 - `docs/G2-SECURITY-BOUNDARY.md`
 - `SECURITY.md`
