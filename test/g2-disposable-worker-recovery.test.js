@@ -57,7 +57,7 @@ test('a replacement Worker cold-resumes from durable checkpoint after the origin
 
   let original = newWorker({ worker_id: 'worker-original', objective_id: 'objective-recovery-1' });
   original = evolve(original, { next_state: 'CLAIMING' });
-  original = evolve(original, { next_state: 'WORKING', checkpoint: true, useful_units_delta: 3, checkpoint_ref: 'durable:checkpoint-1' });
+  original = evolve(original, { next_state: 'RUNNING', checkpoint: true, useful_units_delta: 3, checkpoint_ref: 'durable:checkpoint-1' });
   const checkpoint = resumableCheckpoint(original, { next_action: 'continue-recovery-fixture', durable_refs: ['work:work-recovery-1'] }, 2000);
 
   const persisted = await durable.commit({
@@ -72,7 +72,7 @@ test('a replacement Worker cold-resumes from durable checkpoint after the origin
   const replacement = checkpointFromDurableRecord(loaded.record, { checkpoint_ref: persisted.path });
   assert.equal(replacement.worker_id, 'worker-original');
   assert.equal(replacement.objective_id, 'objective-recovery-1');
-  assert.equal(replacement.state, 'WORKING');
+  assert.equal(replacement.state, 'RUNNING');
   assert.equal(replacement.checkpoint_seq, 1);
   assert.equal(replacement.useful_units, 3);
   assert.equal(replacement.last_checkpoint_ref, persisted.path);
