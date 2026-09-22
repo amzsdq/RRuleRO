@@ -27,6 +27,24 @@ test('adopts a candidate that raises useful time and lowers idle/control overhea
   assert.ok(result.deltas.idleGain > 0);
 });
 
+test('adopts lower blocked time when useful time is preserved and no protected outcome regresses', () => {
+  const result = throughputEvaluator.compareThroughput({
+    ...base,
+    useful_ms: 420000,
+    idle_ms: 60000,
+    control_ms: 60000,
+    blocked_ms: 60000
+  }, {
+    ...base,
+    useful_ms: 420000,
+    idle_ms: 60000,
+    control_ms: 60000,
+    blocked_ms: 30000
+  });
+  assert.equal(result.decision, 'ADOPT');
+  assert.ok(result.deltas.blockedGain > 0);
+});
+
 test('rolls back any throughput gain that weakens a protected correctness/security/recovery outcome', () => {
   const result = throughputEvaluator.compareThroughput(base, {
     ...base,
