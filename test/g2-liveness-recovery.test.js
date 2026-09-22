@@ -30,7 +30,7 @@ test('stale checkpoint under an active lease requests checkpoint resume', () => 
 
 test('active lease without checkpoint is not falsely reclaimed', () => { assert.equal(assessLiveness({ claim: claim(), now: Date.parse('2026-09-22T04:05:00.000Z') }).action, RECOVERY_ACTIONS.HEALTHY); });
 
-test('invalid timestamps fail closed', () => { assert.throws(() => assessLiveness({ claim: claim({ expires_at: 'bad' }) }), /ISO timestamp/); assert.throws(() => assessLiveness({ claim: claim(), checkpoint: checkpoint({ recorded_at: 'bad' }) }), /ISO timestamp/); });
+test('invalid timestamps fail closed', () => { const now = Date.parse('2026-09-22T04:05:00.000Z'); assert.throws(() => assessLiveness({ claim: claim({ expires_at: 'bad' }), now }), /ISO timestamp/); assert.throws(() => assessLiveness({ claim: claim(), checkpoint: checkpoint({ recorded_at: 'bad' }), now }), /ISO timestamp/); });
 
 test('durable queue reclaims an expired claim and makes work claimable again', async () => {
   const durable = createGithubDurableStateAdapter({ transport: memoryTransport() });
