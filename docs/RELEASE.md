@@ -11,7 +11,7 @@ This document covers release packaging. Runtime architecture and product accepta
 
 ## Current candidate
 
-The package metadata is `1.0.0-rc.1`. The release candidate is intended to prove installability and first-run behavior before a final `1.0.0` publication decision.
+The package metadata is `1.0.0-rc.2`. This candidate adds the one-paste ChatGPT section bootstrap and progressive activation model on top of the clean-install package path.
 
 ## Build and verify
 
@@ -24,13 +24,14 @@ npm run release:smoke
 npm pack
 ```
 
-`release:smoke` builds the tarball, installs it into an empty temporary consumer project, invokes the installed CLI, initializes a Personal directory workspace, and runs the workspace doctor including a stale-version CAS rejection check.
+`release:smoke` builds the tarball, installs it into an empty temporary consumer project, verifies the installed package export and npm CLI shim, prints the packaged ChatGPT bootstrap, initializes a Personal directory workspace, and runs the workspace doctor including a stale-version CAS rejection check.
 
 ## Install from an artifact
 
 ```bash
-npm install ./rrulero-1.0.0-rc.1.tgz
+npm install ./rrulero-1.0.0-rc.2.tgz
 npx rrulero version
+npx rrulero bootstrap
 npx rrulero init --workspace ./rrulero-workspace
 npx rrulero doctor --workspace ./rrulero-workspace
 ```
