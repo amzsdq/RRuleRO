@@ -9,6 +9,7 @@ module.exports = {
   projectRuntime: require('./project-runtime'),
   profileSession: require('./profile-session'),
   hostReadiness: require('./host-readiness'),
+  hostCapabilities: require('./host-capabilities'),
   blocker: require('./blocker'),
   reporting: require('./reporting'),
   humanInterface: require('./human-interface'),
