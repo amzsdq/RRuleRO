@@ -1,0 +1,58 @@
+name: release-package
+
+on:
+  pull_request:
+    paths:
+      - 'package.json'
+      - 'bin/**'
+      - 'src/**'
+      - 'scripts/**'
+      - 'test/**'
+      - 'docs/**'
+      - 'README.md'
+      - 'CHANGELOG.md'
+      - '.github/workflows/release-package.yml'
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  release-package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Public safety
+        run: node scripts/public-safety-scan.mjs
+
+      - name: Clean-install release smoke
+        run: npm run release:smoke
+
+      - name: Build release artifact
+        run: |
+          mkdir -p dist
+          npm pack --pack-destination dist
+          cd dist
+          sha256sum *.tgz > SHA256SUMS
+          node -e "const fs=require('fs'); const p=require('../package.json'); fs.writeFileSync('RELEASE-MANIFEST.json', JSON.stringify({name:p.name,version:p.version,git_sha:process.env.GITHUB_SHA,git_ref:process.env.GITHUB_REF_NAME},null,2)+'\n')"
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rrulero-package-${{ github.run_id }}
+          path: |
+            dist/*.tgz
+            dist/SHA256SUMS
+            dist/RELEASE-MANIFEST.json
+          if-no-files-found: error

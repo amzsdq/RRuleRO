@@ -1,14 +1,45 @@
 {
   "name": "rrulero",
-  "version": "0.1.0",
-  "private": true,
+  "version": "1.0.0-rc.1",
   "description": "Persistent multi-agent orchestration runtime with durable recovery",
   "main": "src/g2/index.js",
+  "exports": {
+    ".": "./src/g2/index.js"
+  },
+  "bin": {
+    "rrulero": "bin/rrulero.js"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "docs/",
+    "README.md",
+    "SECURITY.md",
+    "CHANGELOG.md"
+  ],
   "type": "commonjs",
   "scripts": {
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "release:smoke": "node scripts/release-smoke.mjs",
+    "release:check": "npm test && node scripts/public-safety-scan.mjs && npm run release:smoke"
   },
   "engines": {
     "node": ">=22"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/amzsdq/RRuleRO.git"
+  },
+  "bugs": {
+    "url": "https://github.com/amzsdq/RRuleRO/issues"
+  },
+  "homepage": "https://github.com/amzsdq/RRuleRO#readme",
+  "license": "UNLICENSED",
+  "keywords": [
+    "agents",
+    "durable-execution",
+    "orchestration",
+    "recovery",
+    "automation"
+  ]
 }
