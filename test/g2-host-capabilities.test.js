@@ -20,7 +20,7 @@ test('capability booleans without concrete mappings are not sufficient evidence'
     verified_wake: true
   });
   assert.equal(result.ready, false);
-  assert.deepEqual(result.missing_mappings.sort(), ['storage_mapping', 'wake_mapping']);
+  assert.deepEqual([...result.missing_mappings].sort(), ['storage_mapping', 'wake_mapping']);
 });
 
 test('interactive Personal host may omit wake only when unattended execution is not claimed', () => {
