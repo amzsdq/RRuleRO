@@ -1,59 +1,9 @@
 'use strict';
-
-const test = require('node:test');
-const assert = require('node:assert/strict');
-const F = require('../src/g2/foreman');
-
-const SHA = 'synthetic-subject-sha';
-function item(overrides = {}) {
-  return F.normalizeWorkItem({
-    work_id: 'synthetic-work-a', generation: 1, objective_ref: 'synthetic-objective',
-    subject_sha: SHA, state: 'QUEUED', work_domain: 'domain.a',
-    verification_contract: 'synthetic-check', order: 1, ...overrides
-  });
-}
-
-test('same current claim domain is duplicate and expired claim is reclaimable', () => {
-  const now = Date.parse('2026-01-01T00:00:00Z');
-  const a = { work_domain: 'domain.a', subject_sha: SHA, claim_generation: 2, expires_at: '2026-01-01T00:10:00Z' };
-  const b = { ...a };
-  assert.equal(F.sameClaimDomain(a, b), true);
-  assert.equal(F.activeClaim(a, now), true);
-  assert.equal(F.reclaimable(a, now), false);
-  assert.equal(F.reclaimable({ ...a, expires_at: '2025-12-31T23:59:00Z' }, now), true);
-});
-
-test('independent domains dispatch while conflicting effect domains serialize', () => {
-  const a = item({ work_id: 'synthetic-a', work_domain: 'domain.a', effect_domain: 'effect.a' });
-  const b = item({ work_id: 'synthetic-b', work_domain: 'domain.b', effect_domain: 'effect.b' });
-  assert.equal(F.domainsConflict(a, b), false);
-  assert.equal(F.decide(b, { current_subject_sha: SHA, active_items: [{ ...a, state: 'RUNNING' }] }), 'DISPATCH');
-  const c = item({ work_id: 'synthetic-c', work_domain: 'domain.c', effect_domain: 'effect.a' });
-  assert.equal(F.decide(c, { current_subject_sha: SHA, active_items: [{ ...a, state: 'RUNNING' }] }), 'WAIT');
-});
-
-test('dependency blocks only dependent item and stale subject requires review', () => {
-  const blocked = item({ work_id: 'synthetic-blocked', dependencies: ['dep.a'] });
-  const free = item({ work_id: 'synthetic-free', work_domain: 'domain.free', order: 2 });
-  const queue = F.runnableQueue([blocked, free], { current_subject_sha: SHA });
-  assert.deepEqual(queue.map(x => x.work_id), ['synthetic-free']);
-  assert.equal(F.decide(free, { current_subject_sha: 'new-subject' }), 'REVIEW');
-});
-
-test('UNAVAILABLE verification is never pass', () => {
-  assert.deepEqual(F.verifierOutcome('UNAVAILABLE'), { state: 'UNAVAILABLE', accepted: false, lost_time: 'VERIFICATION_WAIT' });
-  assert.equal(F.verifierOutcome('PASS').accepted, true);
-});
-
-test('local completion is nonterminal while runnable program work remains', () => {
-  assert.equal(F.programTerminal([item({ state: 'COMPLETE' }), item({ work_id: 'synthetic-b', work_domain: 'domain.b' })]), false);
-  assert.equal(F.programTerminal([item({ state: 'COMPLETE' }), item({ work_id: 'synthetic-b', work_domain: 'domain.b', state: 'SUPERSEDED' })]), true);
-});
-
-test('selection is deterministic: recovery then downstream unblock then implementation', () => {
-  const normal = item({ work_id: 'synthetic-normal', work_domain: 'domain.n', order: 1 });
-  const unblock = item({ work_id: 'synthetic-unblock', work_domain: 'domain.u', downstream_count: 3, order: 9 });
-  const recovery = item({ work_id: 'synthetic-recovery', work_domain: 'domain.r', recovery_or_verification: true, order: 10 });
-  const queue = F.runnableQueue([normal, unblock, recovery], { current_subject_sha: SHA });
-  assert.deepEqual(queue.map(x => x.work_id), ['synthetic-recovery', 'synthetic-unblock', 'synthetic-normal']);
-});
+const test=require('node:test');const assert=require('node:assert/strict');const F=require('../src/g2/foreman');const SHA='synthetic-subject-sha';
+function item(overrides={}){return F.normalizeWorkItem({work_id:'synthetic-work-a',generation:1,objective_ref:'synthetic-objective',subject_sha:SHA,state:'QUEUED',work_domain:'domain.a',verification_contract:'synthetic-check',order:1,...overrides});}
+test('same current claim domain is duplicate and expired claim is reclaimable',()=>{const now=Date.parse('2026-01-01T00:00:00Z');const a={work_domain:'domain.a',subject_sha:SHA,claim_generation:2,expires_at:'2026-01-01T00:10:00Z'};assert.equal(F.sameClaimDomain(a,{...a}),true);assert.equal(F.activeClaim(a,now),true);assert.equal(F.reclaimable(a,now),false);assert.equal(F.reclaimable({...a,expires_at:'2025-12-31T23:59:00Z'},now),true);});
+test('independent domains dispatch while conflicting effect domains serialize',()=>{const a=item({work_id:'synthetic-a',work_domain:'domain.a',effect_domain:'effect.a'});const b=item({work_id:'synthetic-b',work_domain:'domain.b',effect_domain:'effect.b'});assert.equal(F.domainsConflict(a,b),false);assert.equal(F.decide(b,{current_subject_sha:SHA,active_items:[{...a,state:'RUNNING'}]}),'DISPATCH');const c=item({work_id:'synthetic-c',work_domain:'domain.c',effect_domain:'effect.a'});assert.equal(F.decide(c,{current_subject_sha:SHA,active_items:[{...a,state:'RUNNING'}]}),'WAIT');});
+test('dependency blocks only dependent item and stale subject requires review',()=>{const blocked=item({work_id:'synthetic-blocked',dependencies:['dep.a']});const free=item({work_id:'synthetic-free',work_domain:'domain.free',order:2});assert.deepEqual(F.runnableQueue([blocked,free],{current_subject_sha:SHA}).map(x=>x.work_id),['synthetic-free']);assert.equal(F.decide(free,{current_subject_sha:'new-subject'}),'REVIEW');});
+test('UNAVAILABLE verification is never pass',()=>{assert.deepEqual(F.verifierOutcome('UNAVAILABLE'),{state:'UNAVAILABLE',accepted:false,lost_time:'VERIFICATION_WAIT'});assert.equal(F.verifierOutcome('PASS').accepted,true);});
+test('program terminal requires PASS for every COMPLETE item',()=>{assert.equal(F.programTerminal([item({state:'COMPLETE'}),item({work_id:'synthetic-b',work_domain:'domain.b',state:'SUPERSEDED'})]),false);assert.equal(F.programTerminal([item({state:'COMPLETE',verification_state:'PASS'}),item({work_id:'synthetic-b',work_domain:'domain.b',state:'SUPERSEDED'})]),true);});
+test('selection is deterministic: recovery then downstream unblock then implementation',()=>{const normal=item({work_id:'synthetic-normal',work_domain:'domain.n',order:1});const unblock=item({work_id:'synthetic-unblock',work_domain:'domain.u',downstream_count:3,order:9});const recovery=item({work_id:'synthetic-recovery',work_domain:'domain.r',recovery_or_verification:true,order:10});assert.deepEqual(F.runnableQueue([normal,unblock,recovery],{current_subject_sha:SHA}).map(x=>x.work_id),['synthetic-recovery','synthetic-unblock','synthetic-normal']);});
