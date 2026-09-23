@@ -85,7 +85,7 @@ function resolveWorkSession(comments, { session, generation, automation = null }
     start,
     end,
     latestCheck: checks.filter((marker) => marker.createdAt <= end.createdAt).at(-1) || null,
-    serverObservedWorkDurationSec: Math.floor((end.createdAt - start.createdAt) / 1000),
+    workedSec: Math.floor((end.createdAt - start.createdAt) / 1000),
   }
 }
 
