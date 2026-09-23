@@ -2,9 +2,9 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "CompactForemanCurrentState",
   "type": "object",
-  "required": ["schemaVersion", "root", "updatedAt", "status", "checkpointRef", "next", "scheduler"],
+  "required": ["schemaVersion", "root", "updatedAt", "status", "checkpointRef", "next", "clock", "scheduler", "ownership"],
   "properties": {
-    "schemaVersion": { "type": "integer", "const": 1 },
+    "schemaVersion": { "type": "integer", "const": 2 },
     "root": { "type": "string", "minLength": 1 },
     "updatedAt": { "type": "string", "format": "date-time" },
     "status": { "enum": ["CONTINUE", "PROGRAM_COMPLETE", "BLOCKED", "RISK"] },
@@ -22,17 +22,53 @@
       },
       "additionalProperties": false
     },
+    "clock": {
+      "type": "object",
+      "required": ["mode", "markerIssueRef", "strictCertification", "sessionState", "legacyDurationStatus"],
+      "properties": {
+        "mode": { "const": "GITHUB_SERVER_MARKERS" },
+        "markerIssueRef": { "type": "string", "minLength": 1 },
+        "strictCertification": { "const": true },
+        "sessionState": { "enum": ["IDLE", "OPEN", "CLOSED", "INVALID"] },
+        "sessionId": { "type": "string", "minLength": 1 },
+        "startMarkerRef": { "type": "string", "minLength": 1 },
+        "startCreatedAt": { "type": "string", "format": "date-time" },
+        "endMarkerRef": { "type": "string", "minLength": 1 },
+        "endCreatedAt": { "type": "string", "format": "date-time" },
+        "serverObservedWorkDurationSec": { "type": "integer", "minimum": 0 },
+        "lastServerCertifiedTargetMin": { "type": ["integer", "null"], "minimum": 1 },
+        "legacyDurationStatus": { "enum": ["LEGACY_MODEL_TIME_UNVERIFIED", "LEGACY_SERVER_CROSSCHECKED"] }
+      },
+      "additionalProperties": false
+    },
     "scheduler": {
       "type": "object",
-      "description": "Bounded hot state needed to resume without scanning append-only scheduler history. History remains authoritative audit evidence; this object is the latest snapshot/pointer.",
-      "required": ["targetMin", "lastConfirmedSafeMin", "prearmGapMin", "mode"],
+      "description": "Bounded hot state needed to resume without scanning append-only scheduler history.",
+      "required": ["targetMin", "lastOperationalTargetMin", "mode"],
       "properties": {
         "targetMin": { "type": "integer", "minimum": 1 },
-        "lastConfirmedSafeMin": { "type": "integer", "minimum": 1 },
+        "lastOperationalTargetMin": { "type": "integer", "minimum": 1 },
+        "mode": { "enum": ["SERIAL_PREARM_FIXED_GAP", "OVERLAP_HANDOFF_EXPERIMENT"] },
         "prearmGapMin": { "type": "integer", "minimum": 0 },
-        "mode": { "type": "string", "minLength": 1 },
+        "ownerWorkTargetMin": { "type": "integer", "minimum": 1 },
+        "requiredHandoffLeadMin": { "type": "integer", "minimum": 0 },
+        "successorWakeOffsetMin": { "type": "integer", "minimum": 0 },
         "priorScheduledDue": { "type": "string", "format": "date-time" },
         "lastResultRef": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "ownership": {
+      "type": "object",
+      "required": ["generation", "role", "fencingMode"],
+      "properties": {
+        "generation": { "type": "integer", "minimum": 0 },
+        "role": { "enum": ["OWNER", "SHADOW", "UNASSIGNED", "RETIRED"] },
+        "fencingMode": { "enum": ["PROTOCOL_ONLY", "GITHUB_SHA_CAS_EXPERIMENT"] },
+        "ownerRef": { "type": "string", "minLength": 1 },
+        "ownerActivatedAt": { "type": "string", "format": "date-time" },
+        "shadowWakeAt": { "type": "string", "format": "date-time" },
+        "leaseStateRef": { "type": "string", "minLength": 1 }
       },
       "additionalProperties": false
     },
