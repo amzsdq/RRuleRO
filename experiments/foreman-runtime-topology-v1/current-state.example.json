@@ -1,23 +1,39 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "root": "external-workload-root",
-  "updatedAt": "2026-09-23T08:00:00Z",
+  "updatedAt": "2026-09-23T13:30:00Z",
   "status": "CONTINUE",
   "checkpointRef": "durable://latest-compact-checkpoint",
   "mainRef": "git://main@CURRENT",
   "activeRefs": ["git://active-work"],
-  "hardInvariantsRef": "durable://root-acceptance",
+  "hardInvariantsRef": "experiments/foreman-runtime-topology-v1/runtime-core.md",
   "next": {
     "objective": "Resume the highest-value unfinished unit from the compact checkpoint",
     "acceptance": ["preserve correctness", "leave recoverable evidence"]
   },
+  "clock": {
+    "mode": "GITHUB_SERVER_MARKERS",
+    "markerIssueRef": "github://amzsdq/RRuleRO/issues/72",
+    "strictCertification": true,
+    "sessionState": "IDLE",
+    "lastServerCertifiedTargetMin": null,
+    "legacyDurationStatus": "LEGACY_MODEL_TIME_UNVERIFIED"
+  },
   "scheduler": {
     "targetMin": 11,
-    "lastConfirmedSafeMin": 11,
+    "lastOperationalTargetMin": 11,
+    "mode": "SERIAL_PREARM_FIXED_GAP",
     "prearmGapMin": 3,
-    "mode": "OPTIMUM_CONFIRMED_DOGFOOD",
-    "priorScheduledDue": "2026-09-23T08:00:00Z",
+    "ownerWorkTargetMin": 15,
+    "requiredHandoffLeadMin": 3,
+    "successorWakeOffsetMin": 12,
     "lastResultRef": "audit://duration-result/latest"
+  },
+  "ownership": {
+    "generation": 0,
+    "role": "UNASSIGNED",
+    "fencingMode": "GITHUB_SHA_CAS_EXPERIMENT",
+    "leaseStateRef": "durable://ownership-state"
   },
   "historyTailRef": "audit://append-only-history/tail"
 }
