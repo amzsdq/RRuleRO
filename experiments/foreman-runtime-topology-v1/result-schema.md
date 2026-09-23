@@ -2,7 +2,7 @@
 
 One record per real payload wake. Keep observations append-only because they are experimental evidence; candidate specs/config may evolve normally under Git history.
 
-Model-authored wall-clock strings are not timing authority. Strict duration fields below are derived from GitHub marker `created_at`.
+WORKED is authoritative only when derived from GitHub START/END marker `created_at`.
 
 ```text
 FOREMAN_TOPOLOGY_RESULT
@@ -17,7 +17,7 @@ start_created_at=<GitHub server timestamp>
 check_marker_ref=<GitHub comment ref used for terminal gate>
 end_marker_ref=<GitHub comment ref>
 end_created_at=<GitHub server timestamp>
-server_observed_work_duration_sec=<END.created_at - START.created_at>
+worked_sec=<END_MARKER.created_at - START_MARKER.created_at>
 duration_certification=<SERVER_VERIFIED|OPEN_SESSION|INVALID_SESSION|LEGACY_UNVERIFIED>
 
 target_min=<active target>
