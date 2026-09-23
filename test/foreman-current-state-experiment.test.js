@@ -35,3 +35,13 @@ test('experimental schema requires the bounded scheduler snapshot', () => {
   )
   assert.equal(schema.properties.scheduler.additionalProperties, false)
 })
+
+test('compact foreman restores bounded current state before append-only audit history', () => {
+  const prompt = fs.readFileSync(path.join(EXPERIMENT, 'compact-foreman.txt'), 'utf8')
+  const source = prompt.split('\n').find((line) => line.startsWith('SOURCE=')) ?? ''
+
+  assert.match(source, /CURRENT_STATE first/)
+  assert.match(source, /append-only audit history only when/)
+  assert.match(prompt, /CURRENT_STATE\.scheduler/)
+  assert.match(prompt, /Refresh bounded CURRENT_STATE after a material state transition/)
+})
