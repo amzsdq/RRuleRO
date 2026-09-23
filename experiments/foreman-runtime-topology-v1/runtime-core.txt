@@ -1,30 +1,36 @@
-RUNTIME_CORE=v1
+RUNTIME_CORE=v2
 SCOPE=Shared by Foreman, Worker, Researcher, or any long-running executor. Role/product policy MUST NOT weaken these invariants.
+CLOCK_SPEC=experiments/foreman-runtime-topology-v1/server-observed-work-clock.md
+HANDOFF_SPEC=experiments/foreman-runtime-topology-v1/overlap-handoff.md
 
 START:
-- Record START and restore bounded runtime state first.
-- Restore target and scheduler policy before payload work.
-- Pre-arm the SAME canonical automation exactly once at START according to current scheduler policy; inspect the returned object.
+- Restore bounded target/scheduler/ownership/marker state before substantive payload.
+- Create GitHub [WORK_MARKER] phase=START; require success and capture comment id + server created_at.
+- Do not start substantive payload before START marker success.
+- Anchor schedule math to START_MARKER.created_at or OWNER_ACTIVATED_AT as required by scheduler mode; never model-authored time.
 
 USEFUL_WORK:
-- Continue real useful payload until target. Unit completion, PR/checkpoint completion, or CI wait is NOT a terminal condition.
+- Continue real useful payload until target. Unit/PR/checkpoint completion or CI wait is NOT terminal.
 - No sleep, padding, synthetic work, or bookkeeping invented only to consume duration.
 - If one path waits/blocks, choose another safe non-conflicting useful unit.
 
 TERMINAL_GATE:
-- PROGRAM_COMPLETE, BLOCKED, or RISK may terminate early only when their definitions are actually met and reasonable alternative useful paths are exhausted.
-- If STATUS=CONTINUE and WORKED < TARGET, FINAL/HANDOFF IS FORBIDDEN. Select NEXT_USEFUL_UNIT and continue.
-- Before final response, re-check elapsed time and terminal state. A finished subtask is never sufficient justification for early return.
+- Create a server-timestamped CHECK marker before normal CONTINUE final/handoff.
+- If CHECK.created_at - START.created_at < TARGET, FINAL/HANDOFF IS FORBIDDEN; continue useful work.
+- At actual terminal/handoff create END marker and compute SERVER_OBSERVED_WORK_DURATION from GitHub created_at only.
+- PROGRAM_COMPLETE, BLOCKED, or RISK may terminate early only when genuinely satisfied.
 
-SCHEDULER/IDLE:
-- Treat useful-work target, pre-arm gap, wake jitter, premature return, and observed idle gap as runtime metrics independent of role/product.
-- A premature executor return is not a runtime timeout unless there is evidence of forced truncation/timeout.
-- Optimize for useful-work duty cycle, not maximum nominal target alone: increase target only with repeated clean body+continuation evidence; investigate/decrease when failures or material loss rise.
-- Fixed START+target+gap pre-arm can create excessive idle after premature return. Record that idle penalty explicitly; test recovery scheduling only where the host permits a safe additional mutation without violating the one-prearm contract. Do not silently mutate schedule at end.
+SCHEDULER:
+- SERIAL baseline: NEXT_WAKE = START_MARKER.created_at + TARGET + GAP.
+- OVERLAP experiment: SUCCESSOR_WAKE = OWNER_ACTIVATED_AT + OWNER_WORK_TARGET - REQUIRED_HANDOFF_LEAD.
+- Scheduler mutation is owner-only. Re-read generation/role immediately before owner-only control writes.
+- SHADOW cannot perform owner-only scheduler/control writes.
+- After transfer old owner is close/read-only; next cycle anchors to new OWNER_ACTIVATED_AT, not SHADOW_WAKE.
 
 STATE:
 - Keep bounded mutable CURRENT_RUNTIME_STATE for hot restore.
-- Keep append-only ATTEMPT/RESULT evidence separately for audit/causal reconstruction.
+- Keep append-only WORK_MARKER/ATTEMPT/RESULT evidence for audit/causal reconstruction.
+- Legacy model-written duration is not strict certification evidence.
 - Product details and role-specific decisions stay outside Runtime Core.
 
-REPORT=START, END, WORKED, TARGET, PREARM_NEXT, STATUS plus material runtime anomaly only.
+REPORT=START_MARKER_REF,END_MARKER_REF,SERVER_OBSERVED_WORK_DURATION,TARGET,NEXT_OR_SUCCESSOR_WAKE,GENERATION,ROLE,STATUS
