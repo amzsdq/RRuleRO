@@ -18,7 +18,8 @@ B. COMPACT_FOREMAN_SINGLE_EXECUTOR
 - Immutable rules/spec live in durable repo state.
 - Wake prompt contains only identity, root goal, durable-state pointers, hard boundaries, scheduler invariant, and reporting contract.
 - Same execution restores latest checkpoint, selects next unit, and performs it.
-- Escalate to broader history only when compact tail is ambiguous.
+- Restore from a bounded current-state pointer/snapshot first. Append-only history remains audit evidence, not the mandatory hot-path read.
+- Escalate to broader history only when the current-state snapshot is ambiguous or an invariant must be reconstructed.
 
 C. FOREMAN_WORKER_SPLIT_ON_DEMAND
 - Foreman selects/validates work; worker executes only when decomposition or parallelism has measurable value.
@@ -41,9 +42,19 @@ Do not promote a topology by intuition. Compare observed runs on:
 
 Correctness and recoverability dominate small token/time savings.
 
+## State semantics
+
+Do not force append-only everywhere. Use:
+- bounded mutable snapshot/pointer for current hot-path state;
+- append-only event/result history where auditability and causal reconstruction matter;
+- ordinary Git-tracked replacement for evolving specs/code;
+- explicit supersession links when a prior conclusion is corrected.
+
+This keeps current restore bounded while retaining full forensic history.
+
 ## Traceability / rollback
 
-- Every experiment result is append-only in RRuleRO #72 or a dedicated experiment issue if volume becomes noisy.
+- Detailed topology experiment results live in RRuleRO #73; #72 receives only generalized duration/relay observations when relevant.
 - Each result records variant, source checkpoint, branch/ref, decision, observed failure/success, and supersession relation where applicable.
 - Product artifacts remain in product repositories; this branch contains runtime methodology only.
 - No baseline runtime policy is replaced until repeated dogfood evidence favors a variant.
