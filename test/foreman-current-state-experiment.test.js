@@ -5,45 +5,71 @@ const path = require('node:path')
 
 const ROOT = path.resolve(__dirname, '..')
 const EXPERIMENT = path.join(ROOT, 'experiments', 'foreman-runtime-topology-v1')
+const { resolveWorkSession } = require('../experiments/foreman-runtime-topology-v1/work-marker.js')
 
 function readJson(name) {
   return JSON.parse(fs.readFileSync(path.join(EXPERIMENT, name), 'utf8'))
 }
 
-test('compact current-state example carries scheduler hot state without history scan', () => {
+test('compact current-state example carries server clock, scheduler, and ownership hot state', () => {
   const state = readJson('current-state.example.json')
 
-  assert.equal(state.schemaVersion, 1)
+  assert.equal(state.schemaVersion, 2)
   assert.equal(state.status, 'CONTINUE')
   assert.ok(state.checkpointRef)
   assert.ok(state.next.objective)
+
+  assert.equal(state.clock.mode, 'GITHUB_SERVER_MARKERS')
+  assert.equal(state.clock.strictCertification, true)
+  assert.equal(state.clock.legacyDurationStatus, 'LEGACY_MODEL_TIME_UNVERIFIED')
+
   assert.equal(state.scheduler.targetMin, 11)
-  assert.equal(state.scheduler.lastConfirmedSafeMin, 11)
+  assert.equal(state.scheduler.lastOperationalTargetMin, 11)
+  assert.equal(state.scheduler.mode, 'SERIAL_PREARM_FIXED_GAP')
   assert.equal(state.scheduler.prearmGapMin, 3)
-  assert.ok(state.scheduler.mode)
-  assert.ok(state.scheduler.lastResultRef)
+  assert.equal(state.scheduler.ownerWorkTargetMin, 15)
+  assert.equal(state.scheduler.requiredHandoffLeadMin, 3)
+  assert.equal(state.scheduler.successorWakeOffsetMin, 12)
+
+  assert.equal(state.ownership.generation, 0)
+  assert.equal(state.ownership.role, 'UNASSIGNED')
+  assert.ok(state.ownership.fencingMode)
   assert.ok(state.historyTailRef)
 })
 
-test('experimental schema requires the bounded scheduler snapshot', () => {
+test('experimental schema requires bounded clock, scheduler, and ownership snapshots', () => {
   const schema = readJson('current-state-schema.json')
 
+  assert.ok(schema.required.includes('clock'))
   assert.ok(schema.required.includes('scheduler'))
+  assert.ok(schema.required.includes('ownership'))
+  assert.deepEqual(
+    schema.properties.clock.required,
+    ['mode', 'markerIssueRef', 'strictCertification', 'sessionState', 'legacyDurationStatus'],
+  )
   assert.deepEqual(
     schema.properties.scheduler.required,
-    ['targetMin', 'lastConfirmedSafeMin', 'prearmGapMin', 'mode'],
+    ['targetMin', 'lastOperationalTargetMin', 'mode'],
   )
+  assert.deepEqual(
+    schema.properties.ownership.required,
+    ['generation', 'role', 'fencingMode'],
+  )
+  assert.equal(schema.properties.clock.additionalProperties, false)
   assert.equal(schema.properties.scheduler.additionalProperties, false)
+  assert.equal(schema.properties.ownership.additionalProperties, false)
 })
 
-test('compact foreman restores bounded current state before audit history', () => {
+test('compact foreman restores bounded state and reports server-observed duration', () => {
   const prompt = fs.readFileSync(path.join(EXPERIMENT, 'compact-foreman.txt'), 'utf8')
   const source = prompt.split('\n').find((line) => line.startsWith('SOURCE=')) ?? ''
 
   assert.match(source, /CURRENT_STATE first/)
+  assert.match(source, /clock\/ownership\/scheduler/)
   assert.match(source, /append-only audit history only when/)
   assert.match(prompt, /RUNTIME_CORE=/)
-  assert.match(prompt, /Refresh bounded CURRENT_STATE after a material state transition/)
+  assert.match(prompt, /SERVER_OBSERVED_WORK_DURATION/)
+  assert.match(prompt, /SHADOW is read\/prepare-only/)
 })
 
 test('foreman and worker share the same runtime core', () => {
@@ -56,11 +82,85 @@ test('foreman and worker share the same runtime core', () => {
   assert.match(worker, /Worker role does not redefine/)
 })
 
-test('runtime core forbids premature CONTINUE handoff', () => {
+test('runtime core uses GitHub server markers for the terminal gate', () => {
   const core = fs.readFileSync(path.join(EXPERIMENT, 'runtime-core.md'), 'utf8')
 
-  assert.match(core, /CONTINUE && WORKED < TARGET/)
+  assert.match(core, /START_MARKER\.created_at/)
+  assert.match(core, /CHECK_MARKER\.created_at - START_MARKER\.created_at/)
+  assert.match(core, /SERVER_OBSERVED_WORK_DURATION/)
+  assert.match(core, /Model-written values/)
   assert.match(core, /FINAL\/HANDOFF FORBIDDEN/)
-  assert.match(core, /START \+ TARGET \+ GAP pre-arm remains the baseline fail-safe/)
-  assert.match(core, /Append-only is not a universal rule/)
+  assert.match(core, /LEGACY_MODEL_TIME_UNVERIFIED/)
+})
+
+test('overlap handoff spec preserves owner fencing and activation anchor', () => {
+  const overlap = fs.readFileSync(path.join(EXPERIMENT, 'overlap-handoff.md'), 'utf8')
+
+  assert.match(overlap, /OWNER_WORK_TARGET = 15m/)
+  assert.match(overlap, /SUCCESSOR_WAKE_OFFSET = \+12m/)
+  assert.match(overlap, /SINGLE OWNER/)
+  assert.match(overlap, /SHADOW NO WRITE/)
+  assert.match(overlap, /GENERATION FENCING/)
+  assert.match(overlap, /OWNER ACTIVATION ANCHOR/)
+  assert.match(overlap, /duplicate owner = 0/)
+  assert.match(overlap, /15\/12 is a baseline candidate, not a permanent rule/)
+})
+
+test('work-marker resolver chooses canonical start and server-timestamped end', () => {
+  const session = 'session-7'
+  const comments = [
+    {
+      id: 101,
+      created_at: '2026-09-23T12:00:02Z',
+      body: '[WORK_MARKER]\nsession=session-7\nphase=START\ngeneration=7\nautomation=a1',
+    },
+    {
+      id: 100,
+      created_at: '2026-09-23T12:00:00Z',
+      body: '[WORK_MARKER]\nsession=session-7\nphase=START\ngeneration=7\nautomation=a1',
+    },
+    {
+      id: 150,
+      created_at: '2026-09-23T12:10:00Z',
+      body: '[WORK_MARKER]\nsession=session-7\nphase=CHECK\ngeneration=7\nautomation=a1',
+    },
+    {
+      id: 200,
+      created_at: '2026-09-23T12:11:03Z',
+      body: '[WORK_MARKER]\nsession=session-7\nphase=END\ngeneration=7\nautomation=a1\nstart_marker=100\nstatus=CONTINUE',
+    },
+  ]
+
+  const result = resolveWorkSession(comments, { session, generation: 7, automation: 'a1' })
+
+  assert.equal(result.state, 'CLOSED')
+  assert.equal(result.start.id, '100')
+  assert.equal(result.end.id, '200')
+  assert.equal(result.serverObservedWorkDurationSec, 663)
+})
+
+test('work-marker resolver ignores stale generation and rejects end bound to duplicate start', () => {
+  const comments = [
+    {
+      id: 10,
+      created_at: '2026-09-23T12:00:00Z',
+      body: '[WORK_MARKER]\nsession=s\nphase=START\ngeneration=4\nautomation=a1',
+    },
+    {
+      id: 11,
+      created_at: '2026-09-23T12:00:01Z',
+      body: '[WORK_MARKER]\nsession=s\nphase=START\ngeneration=5\nautomation=a1',
+    },
+    {
+      id: 12,
+      created_at: '2026-09-23T12:11:02Z',
+      body: '[WORK_MARKER]\nsession=s\nphase=END\ngeneration=5\nautomation=a1\nstart_marker=999\nstatus=CONTINUE',
+    },
+  ]
+
+  const result = resolveWorkSession(comments, { session: 's', generation: 5, automation: 'a1' })
+
+  assert.equal(result.state, 'OPEN_SESSION')
+  assert.equal(result.start.id, '11')
+  assert.equal(result.serverObservedWorkDurationSec, undefined)
 })
