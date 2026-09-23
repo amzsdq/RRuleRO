@@ -1,13 +1,18 @@
-RUNTIME_CORE=v2
+RUNTIME_CORE=v3
 SCOPE=Shared by Foreman, Worker, Researcher, or any long-running executor. Role/product policy MUST NOT weaken these invariants.
 CLOCK_SPEC=experiments/foreman-runtime-topology-v1/server-observed-work-clock.md
 HANDOFF_SPEC=experiments/foreman-runtime-topology-v1/overlap-handoff.md
+
+WORK_DURATION_INVARIANT:
+- Source of Truth is GitHub server timestamp, never model output.
+- WORKED = END_MARKER.created_at - START_MARKER.created_at.
+- Model-written time strings MUST NOT be used for work-duration judgment.
 
 START:
 - Restore bounded target/scheduler/ownership/marker state before substantive payload.
 - Create GitHub [WORK_MARKER] phase=START; require success and capture comment id + server created_at.
 - Do not start substantive payload before START marker success.
-- Anchor schedule math to START_MARKER.created_at or OWNER_ACTIVATED_AT as required by scheduler mode; never model-authored time.
+- Anchor schedule math to START_MARKER.created_at or OWNER_ACTIVATED_AT as required by scheduler mode.
 
 USEFUL_WORK:
 - Continue real useful payload until target. Unit/PR/checkpoint completion or CI wait is NOT terminal.
@@ -17,7 +22,7 @@ USEFUL_WORK:
 TERMINAL_GATE:
 - Create a server-timestamped CHECK marker before normal CONTINUE final/handoff.
 - If CHECK.created_at - START.created_at < TARGET, FINAL/HANDOFF IS FORBIDDEN; continue useful work.
-- At actual terminal/handoff create END marker and compute SERVER_OBSERVED_WORK_DURATION from GitHub created_at only.
+- At actual terminal/handoff create END marker and compute WORKED from GitHub created_at only.
 - PROGRAM_COMPLETE, BLOCKED, or RISK may terminate early only when genuinely satisfied.
 
 SCHEDULER:
@@ -33,4 +38,4 @@ STATE:
 - Legacy model-written duration is not strict certification evidence.
 - Product details and role-specific decisions stay outside Runtime Core.
 
-REPORT=START_MARKER_REF,END_MARKER_REF,SERVER_OBSERVED_WORK_DURATION,TARGET,NEXT_OR_SUCCESSOR_WAKE,GENERATION,ROLE,STATUS
+REPORT=START_MARKER_REF,END_MARKER_REF,WORKED,TARGET,NEXT_OR_SUCCESSOR_WAKE,GENERATION,ROLE,STATUS
