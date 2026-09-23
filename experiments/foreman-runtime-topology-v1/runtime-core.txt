@@ -1,0 +1,30 @@
+RUNTIME_CORE=v1
+SCOPE=Shared by Foreman, Worker, Researcher, or any long-running executor. Role/product policy MUST NOT weaken these invariants.
+
+START:
+- Record START and restore bounded runtime state first.
+- Restore target and scheduler policy before payload work.
+- Pre-arm the SAME canonical automation exactly once at START according to current scheduler policy; inspect the returned object.
+
+USEFUL_WORK:
+- Continue real useful payload until target. Unit completion, PR/checkpoint completion, or CI wait is NOT a terminal condition.
+- No sleep, padding, synthetic work, or bookkeeping invented only to consume duration.
+- If one path waits/blocks, choose another safe non-conflicting useful unit.
+
+TERMINAL_GATE:
+- PROGRAM_COMPLETE, BLOCKED, or RISK may terminate early only when their definitions are actually met and reasonable alternative useful paths are exhausted.
+- If STATUS=CONTINUE and WORKED < TARGET, FINAL/HANDOFF IS FORBIDDEN. Select NEXT_USEFUL_UNIT and continue.
+- Before final response, re-check elapsed time and terminal state. A finished subtask is never sufficient justification for early return.
+
+SCHEDULER/IDLE:
+- Treat useful-work target, pre-arm gap, wake jitter, premature return, and observed idle gap as runtime metrics independent of role/product.
+- A premature executor return is not a runtime timeout unless there is evidence of forced truncation/timeout.
+- Optimize for useful-work duty cycle, not maximum nominal target alone: increase target only with repeated clean body+continuation evidence; investigate/decrease when failures or material loss rise.
+- Fixed START+target+gap pre-arm can create excessive idle after premature return. Record that idle penalty explicitly; test recovery scheduling only where the host permits a safe additional mutation without violating the one-prearm contract. Do not silently mutate schedule at end.
+
+STATE:
+- Keep bounded mutable CURRENT_RUNTIME_STATE for hot restore.
+- Keep append-only ATTEMPT/RESULT evidence separately for audit/causal reconstruction.
+- Product details and role-specific decisions stay outside Runtime Core.
+
+REPORT=START, END, WORKED, TARGET, PREARM_NEXT, STATUS plus material runtime anomaly only.
