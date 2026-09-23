@@ -1,19 +1,27 @@
-# Server-Observed Work Clock v1
+# Work Duration Clock v2
 
 Status: EXPERIMENTAL CANDIDATE / required by Runtime Core on this branch.
 
-Purpose: eliminate model-authored START/END arithmetic as duration evidence. GitHub issue-comment `created_at` is the external observation clock.
+The duration definition is not redefined here. Runtime Core has the single canonical invariant:
 
-## Terms
+```text
+WORK_DURATION의 Source of Truth는
+모델 출력이 아니라 GitHub 서버 timestamp이다.
 
-- `SERVER_OBSERVED_WORK_DURATION`: elapsed wall-clock time between the GitHub server timestamps of one valid START marker and one valid END marker.
-- This is not CPU time or pure reasoning time. It includes API/tool latency and other activity inside the observed work window.
-- Model-written clock strings are labels only and MUST NOT satisfy a duration gate.
+WORKED =
+END_MARKER.created_at
+-
+START_MARKER.created_at
+```
+
+모델이 작성한 시간 문자열은 작업시간 판정에 사용하지 않는다.
+
+This file only defines marker/session handling needed to apply that invariant safely.
 
 ## Session protocol
 
 1. Restore only enough bounded runtime state to know the active target, scheduler mode, marker issue, and ownership generation.
-2. Before substantive payload work, create a GitHub issue comment:
+2. Before substantive payload work, create:
 
 ```text
 [WORK_MARKER]
@@ -24,10 +32,10 @@ automation=<canonical automation id>
 ```
 
 3. Require comment creation success and capture the returned comment id plus GitHub `created_at`. Payload work MUST NOT start before the valid START marker exists.
-4. Store `start_marker_ref` and `start_created_at` in bounded hot state.
-5. Run the scheduler mutation required by the active scheduler mode, anchored to `START_MARKER.created_at`, not a model-authored time.
+4. Persist `start_marker_ref` and `start_created_at`.
+5. Run scheduler math from the server timestamp required by the active scheduler mode.
 6. Continue useful work.
-7. When considering a normal CONTINUE handoff, create a CHECK marker for the same session. Use its GitHub `created_at` as the external current-time observation. If `CHECK.created_at - START.created_at < TARGET`, final/handoff is forbidden and useful work continues.
+7. Before a normal CONTINUE handoff/final, create a CHECK marker for the same session/generation. If `CHECK.created_at - START.created_at < TARGET`, final/handoff is forbidden.
 8. At actual terminal/handoff, create:
 
 ```text
@@ -39,14 +47,8 @@ start_marker=<GitHub comment id/ref>
 status=<CONTINUE|PROGRAM_COMPLETE|BLOCKED|RISK>
 ```
 
-9. Compute only from GitHub timestamps:
-
-```text
-SERVER_OBSERVED_WORK_DURATION =
-END_MARKER.created_at - START_MARKER.created_at
-```
-
-10. Persist marker refs and computed duration. Human-readable START/END values, when shown, are derived from those server timestamps.
+9. Calculate WORKED only with the canonical formula.
+10. Human-readable START/END values, when shown, are derived from marker `created_at`.
 
 ## Duplicate / invalid marker handling
 
@@ -58,9 +60,9 @@ For one logical `session`:
 - no START => `INVALID_SESSION`;
 - START without END => `OPEN_SESSION`;
 - END before START => `INVALID_SESSION`;
-- generation mismatch => marker is stale and ignored for ownership/duration certification.
+- generation mismatch => stale marker, ignored for ownership/duration certification.
 
-Once a canonical marker id is persisted in hot state, later retries MUST reuse that canonical reference rather than silently selecting a different marker.
+Once a canonical marker id is persisted, later retries MUST reuse that canonical reference rather than silently selecting another marker.
 
 ## Certification rule
 
@@ -68,8 +70,8 @@ A duration sample counts toward target promotion only when:
 - canonical START and END GitHub marker refs exist;
 - both GitHub `created_at` values are available;
 - END is after START;
-- observed duration meets/exceeds TARGET for normal CONTINUE;
+- WORKED meets/exceeds TARGET for normal CONTINUE;
 - no material work loss or forced-runtime ambiguity invalidates the sample;
 - the following continuation is accounted for when the active experiment requires it.
 
-Legacy self-reported `START/END/WORKED` records may remain forensic history but are `LEGACY_MODEL_TIME_UNVERIFIED` unless independently server-verifiable. They MUST NOT be used as strict duration-certification evidence.
+Legacy model-authored START/END/WORKED records remain forensic history only unless independently server-verifiable. They MUST NOT be used as strict duration-certification evidence.
