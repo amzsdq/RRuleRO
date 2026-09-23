@@ -1,4 +1,4 @@
-# Runtime Core v0.2 — Experimental Common Invariants
+# Runtime Core v0.3 — Experimental Common Invariants
 
 Status: EXPERIMENTAL / shared by all topology variants on this branch.
 
@@ -8,57 +8,53 @@ Normative companion specs:
 - `server-observed-work-clock.md`
 - `overlap-handoff.md`
 
+## Work-duration invariant — hard / canonical
+
+```text
+WORK_DURATION의 Source of Truth는
+모델 출력이 아니라 GitHub 서버 timestamp이다.
+```
+
+```text
+WORKED =
+END_MARKER.created_at
+-
+START_MARKER.created_at
+```
+
+모델이 작성한 시간 문자열은 작업시간 판정에 사용하지 않는다.
+
+This is the only authoritative work-duration definition in this Runtime Core.
+
 ## Common wake contract
 
 1. Restore the bounded current runtime state first: active target, scheduler mode, marker issue, prior result pointer, ownership generation, and handoff mode. Read long audit history only when bounded state is missing, stale, ambiguous, or forensic reconstruction is required.
 2. Before substantive payload work, create a GitHub `[WORK_MARKER] phase=START` for a stable session id and current generation. Require successful creation and capture the GitHub comment id + server `created_at`.
-3. Payload work MUST NOT begin before the valid START marker exists. Model-authored clock strings do not establish START.
-4. Anchor the scheduler to `START_MARKER.created_at` and mutate the configured scheduler exactly once for that owner cycle. Inspect the mutation result.
+3. Payload work MUST NOT begin before the valid START marker exists.
+4. Anchor scheduler math to `START_MARKER.created_at` or `OWNER_ACTIVATED_AT` as required by scheduler mode.
 5. Perform real useful payload work continuously. Finishing one unit, opening/merging a PR, posting a checkpoint, answering one research question, or waiting on CI does not end a CONTINUE wake; select the next safe useful unit.
 6. Never sleep, pad, idle, or manufacture work merely to satisfy a duration target.
-7. Before any normal CONTINUE final/handoff, create a server-timestamped CHECK marker for the same session/generation. Run the terminal gate using `CHECK.created_at - START.created_at`.
-8. At actual terminal/handoff, create the matching END marker and derive `SERVER_OBSERVED_WORK_DURATION = END.created_at - START.created_at`.
+7. Before any normal CONTINUE final/handoff, create a server-timestamped CHECK marker for the same session/generation. If `CHECK_MARKER.created_at - START_MARKER.created_at < TARGET`, final/handoff is forbidden.
+8. At actual terminal/handoff, create the matching END marker and calculate WORKED using the canonical invariant above.
 9. Keep hot current state bounded; preserve append-only marker/audit/experiment evidence separately when causal history matters.
-
-## Work-clock invariant — hard
-
-GitHub issue-comment `created_at` is the duration authority for this experiment.
-
-Model-written values such as:
-
-```text
-START=22:01
-END=22:12
-WORKED=11m
-```
-
-are descriptive only and MUST NOT satisfy a target gate.
-
-Strict duration certification requires canonical GitHub START/END marker refs and their server timestamps. Legacy self-reported duration history is `LEGACY_MODEL_TIME_UNVERIFIED` unless independently server-verifiable.
-
-See `server-observed-work-clock.md` for duplicate/invalid marker handling.
 
 ## Terminal gate — hard
 
 A normal CONTINUE wake may not end below the active useful-work target.
 
-Pseudo-rule:
-
 ```text
-SERVER_ELAPSED_AT_CHECK = CHECK_MARKER.created_at - START_MARKER.created_at
-
-CONTINUE && SERVER_ELAPSED_AT_CHECK < TARGET
+CONTINUE
+&& CHECK_MARKER.created_at - START_MARKER.created_at < TARGET
 => FINAL/HANDOFF FORBIDDEN
 => choose the next safe useful unit and continue
 ```
 
-At finalization, the END marker must also show:
+At finalization:
 
 ```text
-SERVER_OBSERVED_WORK_DURATION >= TARGET
+CONTINUE && WORKED < TARGET
+=> INVALID_NORMAL_HANDOFF
 ```
-
-for a normal CONTINUE result.
 
 Early end below target is allowed only for PROGRAM_COMPLETE, BLOCKED, or RISK. BLOCKED/RISK require reasonable alternative useful paths to be exhausted and the concrete evidence recorded.
 
@@ -68,8 +64,6 @@ A platform/tool hard truncation is not reclassified as a valid normal handoff.
 
 ### SERIAL_PREARM_FIXED_GAP — rollback/baseline
 
-One owner execution schedules the next wake from server-observed START:
-
 ```text
 NEXT_WAKE = START_MARKER.created_at + TARGET + GAP
 ```
@@ -77,8 +71,6 @@ NEXT_WAKE = START_MARKER.created_at + TARGET + GAP
 This remains the rollback baseline until an overlap mode is demonstrated safe.
 
 ### OVERLAP_HANDOFF_EXPERIMENT — candidate
-
-General rule:
 
 ```text
 SUCCESSOR_WAKE_TARGET =
@@ -121,7 +113,7 @@ Where GitHub content-state is used for ownership, prefer current blob SHA + gene
 Primary objective is useful-work duty cycle, not duration in isolation.
 
 Measure:
-- server_observed_work_duration
+- WORKED
 - control/restore overhead
 - end-to-next-owner-substantive-work idle
 - scheduled_due vs actual_start jitter
