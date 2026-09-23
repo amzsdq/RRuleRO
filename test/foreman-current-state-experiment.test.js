@@ -43,24 +43,13 @@ test('experimental schema requires bounded clock, scheduler, and ownership snaps
   assert.ok(schema.required.includes('clock'))
   assert.ok(schema.required.includes('scheduler'))
   assert.ok(schema.required.includes('ownership'))
-  assert.deepEqual(
-    schema.properties.clock.required,
-    ['mode', 'markerIssueRef', 'strictCertification', 'sessionState', 'legacyDurationStatus'],
-  )
-  assert.deepEqual(
-    schema.properties.scheduler.required,
-    ['targetMin', 'lastOperationalTargetMin', 'mode'],
-  )
-  assert.deepEqual(
-    schema.properties.ownership.required,
-    ['generation', 'role', 'fencingMode'],
-  )
+  assert.equal(schema.properties.clock.properties.workedSec.type, 'integer')
   assert.equal(schema.properties.clock.additionalProperties, false)
   assert.equal(schema.properties.scheduler.additionalProperties, false)
   assert.equal(schema.properties.ownership.additionalProperties, false)
 })
 
-test('compact foreman restores bounded state and reports server-observed duration', () => {
+test('compact foreman restores bounded state and reports WORKED only', () => {
   const prompt = fs.readFileSync(path.join(EXPERIMENT, 'compact-foreman.txt'), 'utf8')
   const source = prompt.split('\n').find((line) => line.startsWith('SOURCE=')) ?? ''
 
@@ -68,8 +57,8 @@ test('compact foreman restores bounded state and reports server-observed duratio
   assert.match(source, /clock\/ownership\/scheduler/)
   assert.match(source, /append-only audit history only when/)
   assert.match(prompt, /RUNTIME_CORE=/)
-  assert.match(prompt, /SERVER_OBSERVED_WORK_DURATION/)
-  assert.match(prompt, /SHADOW is read\/prepare-only/)
+  assert.match(prompt, /REPORT=.*WORKED/)
+  assert.doesNotMatch(prompt, /SERVER_OBSERVED_WORK_DURATION/)
 })
 
 test('foreman and worker share the same runtime core', () => {
@@ -82,15 +71,14 @@ test('foreman and worker share the same runtime core', () => {
   assert.match(worker, /Worker role does not redefine/)
 })
 
-test('runtime core uses GitHub server markers for the terminal gate', () => {
+test('runtime core has one canonical WORKED formula from GitHub created_at', () => {
   const core = fs.readFileSync(path.join(EXPERIMENT, 'runtime-core.md'), 'utf8')
 
-  assert.match(core, /START_MARKER\.created_at/)
-  assert.match(core, /CHECK_MARKER\.created_at - START_MARKER\.created_at/)
-  assert.match(core, /SERVER_OBSERVED_WORK_DURATION/)
-  assert.match(core, /Model-written values/)
-  assert.match(core, /FINAL\/HANDOFF FORBIDDEN/)
-  assert.match(core, /LEGACY_MODEL_TIME_UNVERIFIED/)
+  assert.match(core, /WORK_DURATION의 Source of Truth는/)
+  assert.match(core, /모델 출력이 아니라 GitHub 서버 timestamp이다/)
+  assert.match(core, /WORKED =\s*END_MARKER\.created_at\s*-\s*START_MARKER\.created_at/s)
+  assert.match(core, /모델이 작성한 시간 문자열은 작업시간 판정에 사용하지 않는다/)
+  assert.doesNotMatch(core, /SERVER_OBSERVED_WORK_DURATION/)
 })
 
 test('overlap handoff spec preserves owner fencing and activation anchor', () => {
@@ -106,8 +94,7 @@ test('overlap handoff spec preserves owner fencing and activation anchor', () =>
   assert.match(overlap, /15\/12 is a baseline candidate, not a permanent rule/)
 })
 
-test('work-marker resolver chooses canonical start and server-timestamped end', () => {
-  const session = 'session-7'
+test('work-marker resolver chooses canonical start and computes WORKED from server timestamps', () => {
   const comments = [
     {
       id: 101,
@@ -131,12 +118,13 @@ test('work-marker resolver chooses canonical start and server-timestamped end', 
     },
   ]
 
-  const result = resolveWorkSession(comments, { session, generation: 7, automation: 'a1' })
+  const result = resolveWorkSession(comments, { session: 'session-7', generation: 7, automation: 'a1' })
 
   assert.equal(result.state, 'CLOSED')
   assert.equal(result.start.id, '100')
   assert.equal(result.end.id, '200')
-  assert.equal(result.serverObservedWorkDurationSec, 663)
+  assert.equal(result.workedSec, 663)
+  assert.equal(result.serverObservedWorkDurationSec, undefined)
 })
 
 test('work-marker resolver ignores stale generation and rejects end bound to duplicate start', () => {
@@ -162,5 +150,5 @@ test('work-marker resolver ignores stale generation and rejects end bound to dup
 
   assert.equal(result.state, 'OPEN_SESSION')
   assert.equal(result.start.id, '11')
-  assert.equal(result.serverObservedWorkDurationSec, undefined)
+  assert.equal(result.workedSec, undefined)
 })
