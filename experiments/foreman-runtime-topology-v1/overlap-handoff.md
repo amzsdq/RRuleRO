@@ -1,73 +1,94 @@
-# Overlap Handoff Relay v1 — Experimental Baseline
+# Overlap Handoff Relay v2 — +14m Baton Prearm
 
 Status: EXPERIMENTAL / not promoted.
-Rollback baseline: serial single-executor pre-arm policy on main / prior Runtime Core.
+Rollback baseline: serial single-executor behavior on main.
 
-Goal: reduce handoff idle by waking the successor before the active owner finishes, while preserving exactly-one-owner control semantics.
+Goal: minimize handoff idle while preserving exactly-one-owner substantive authority.
 
-## General timing model
+## Wake model
+
+Every actual invocation performs exactly one continuity prearm before substantive work:
 
 ```text
-SUCCESSOR_WAKE_TARGET =
-OWNER_ACTIVATED_AT + OWNER_WORK_TARGET - REQUIRED_HANDOFF_LEAD
+PREARM_NEXT = observed_wake_time + 14 minutes
 ```
 
-Initial candidate:
-- OWNER_WORK_TARGET = 15m
-- SUCCESSOR_WAKE_OFFSET = +12m
-- NOMINAL_OVERLAP = 3m
+The same canonical automation is updated while preserving recurring RRULE, exact_schedule, and enabled state.
 
-Comparison candidates:
-- 15/11 => nominal overlap 4m
-- 15/12 => nominal overlap 3m
-- 15/13 => nominal overlap 2m
+This +14m value is a scheduler lead/continuity parameter, NOT a work-duration target.
 
-For target-ascent dogfood, the same formula may be used with a fixed 3m required lead so only one primary variable changes at a time.
+A SHADOW may perform the wake-start prearm.
+
+```text
+PREARM DOES NOT CONFER OWNERSHIP.
+```
 
 ## State machine
 
 `UNASSIGNED -> OWNER -> TRANSFERRING -> RETIRED`
 
-A successor may enter `SHADOW` before ownership transfer:
+A successor may wake before transfer:
 
 `SCHEDULED_SUCCESSOR -> SHADOW -> OWNER`
 
 ### OWNER
-- exactly one execution owns owner-only scheduler/control writes;
-- substantive product work continues until the active work target or a legitimate terminal state;
-- owner writes a recoverable compact checkpoint before transfer.
+- exactly one current generation owns substantive shared-state/product/control writes;
+- keeps doing safe useful work while the program is unfinished and no verified successor transfer exists;
+- writes a recoverable compact checkpoint before transfer;
+- may close normally only through PROGRAM_COMPLETE or SUCCESSOR_HANDOFF_COMPLETE.
 
 ### SHADOW
+- performs its single wake-start +14m prearm;
 - may read durable state/checkpoints;
-- may prepare the next work unit, source material, branch/PR context, and acceptance checks;
-- MUST NOT mutate owner-only scheduler/control state;
-- MUST NOT claim root completion;
-- MUST NOT perform conflicting owner-only product writes unless explicitly assigned a conflict-free read/review unit.
+- may prepare the next work unit, sources, branch/PR context, and acceptance checks;
+- may write only immutable own evidence when needed;
+- MUST NOT perform OWNER-only shared-state/product/control writes;
+- MUST NOT claim completion or ownership.
 
 ### Transfer
-1. Owner finalizes the latest durable checkpoint.
-2. Transfer increments `generation`.
-3. Durable ownership state records successor as the new OWNER and records `OWNER_ACTIVATED_AT`.
-4. Old owner stops owner-only scheduler/control writes immediately and performs close-only work.
-5. New owner re-reads durable ownership state and verifies its generation before any owner-only write.
-6. Only the new owner schedules the next successor, anchored to its `OWNER_ACTIVATED_AT`, never its earlier shadow wake.
+1. Successor has actually woken and produced READY evidence.
+2. Current OWNER finalizes the latest durable checkpoint.
+3. Durable transfer advances `generation`.
+4. Durable ownership state records successor as new OWNER.
+5. Old OWNER immediately stops OWNER-only side effects.
+6. New OWNER re-reads durable state and verifies its generation before any OWNER-only write.
+7. Old OWNER performs only bounded close bookkeeping and creates its END marker.
+8. The new OWNER continues work; its already-performed wake-start prearm provides the next continuation.
 
 ## Hard safety invariants
 
-1. SINGLE OWNER — exactly one owner may mutate owner-only scheduler/control state.
-2. SHADOW NO WRITE — shadow cannot perform owner-only scheduler/control writes.
-3. GENERATION FENCING — every handoff increments a generation/lease token; stale-generation owner writes must be rejected or fail closed.
-4. DURABLE HANDOFF — successor resumes from durable checkpoint/state, not prior chat-response copying.
-5. OWNER ACTIVATION ANCHOR — next cycle timing is anchored to `OWNER_ACTIVATED_AT`, not `SHADOW_WAKE_AT`.
-6. TRANSFER BEFORE FULL EXIT — once safe fencing exists, old owner may remain alive only for close/read-only work after transfer.
+1. SINGLE OWNER — exactly one generation may perform OWNER-only substantive writes.
+2. SHADOW PREARM ALLOWED — scheduler continuity prearm is permitted before ownership.
+3. PREARM != OWNERSHIP — scheduler mutation never grants substantive authority.
+4. GENERATION FENCING — every handoff advances generation; stale owner writes fail closed.
+5. DURABLE HANDOFF — successor resumes from durable state/checkpoint, not prior chat-response copying.
+6. READY BEFORE TRANSFER — successor must be a real invocation, not a planned future wake.
+7. TRANSFER BEFORE PREDECESSOR CLOSE — predecessor cannot normally END before durable transfer is confirmed.
+8. NO DURATION STOP — elapsed time, target minutes, PR completion, or CI completion do not grant stop authority.
+9. TWO NORMAL STOP GATES — PROGRAM_COMPLETE or SUCCESSOR_HANDOFF_COMPLETE only.
+
+## Missing/late successor
+
+If successor wake/READY/transfer is late or absent:
+- current OWNER keeps doing safe useful work;
+- already-prearmed continuation remains in force;
+- do not create END merely because the expected handoff time passed.
+
+## Scheduler mutation rule
+
+Each invocation gets exactly one normal scheduler mutation: wake-start +14m prearm.
+
+After that, no further scheduler mutation is allowed in the same wake except one safe verification retry if the returned state is malformed/mismatched.
+
+This separation reduces scheduler races while allowing SHADOW continuity insurance.
 
 ## Fencing requirement / activation gate
 
-Overlap mode MUST NOT be promoted merely because two executions can overlap.
+Overlap mode MUST NOT be promoted merely because concurrent wakes are possible.
 
-Before active owner transfer is considered safe, the implementation must demonstrate a durable fencing primitive with fail-closed stale-writer behavior. Preferred experiment: GitHub content-state update with current blob SHA / generation check for ownership state, plus a mandatory generation re-read before any scheduler mutation.
+Before promotion, repeated dogfood must demonstrate fail-closed stale-writer behavior and acceptable scheduler behavior.
 
-Because the scheduler mutation API itself does not expose a compare-and-swap generation precondition, protocol-only scheduler fencing remains a residual race. Until repeated dogfood demonstrates duplicate owner = 0 and scheduler conflict = 0, classify overlap as experimental and keep serial mode as rollback.
+Because scheduler mutation itself has no atomic generation CAS, scheduler continuity is intentionally separated from substantive ownership fencing.
 
 ## Metrics
 
@@ -75,22 +96,23 @@ Primary:
 - HANDOFF_IDLE_GAP_SEC
 
 Also record:
-- wake lateness
-- successor preparation time
-- READY-before-transfer
-- ownership transfer time
-- actual overlap
-- duplicate owner
-- scheduler conflict
-- stale-owner write blocked/succeeded
-- lost continuation
-- successor first substantive-work time
-- long-run useful-work utilization
+- scheduled due vs actual wake;
+- successor preparation time;
+- READY-before-transfer;
+- ownership transfer latency;
+- actual overlap;
+- duplicate owner;
+- scheduler conflict;
+- stale-owner write blocked/succeeded;
+- lost continuation;
+- successor first substantive-work time;
+- long-run useful-work utilization;
+- WORKED from GitHub server markers.
 
 Safety acceptance:
-- duplicate owner = 0
-- scheduler conflict = 0
-- stale owner write success = 0
-- lost continuation = 0
+- duplicate owner = 0;
+- stale owner substantive write success = 0;
+- lost continuation = 0;
+- scheduler conflicts remain bounded/non-destructive.
 
-Promotion principle: choose the shortest overlap that keeps all safety conditions at zero while driving handoff idle close to zero. 15/12 is a baseline candidate, not a permanent rule.
+Promotion principle: prefer the simplest overlap-baton mechanism that keeps safety counters at zero and materially reduces handoff idle. The +14m prearm is the current experimental baseline, not a permanent architecture constant.
