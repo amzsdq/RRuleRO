@@ -15,7 +15,7 @@ ROLE_RULES:
 - Record a compact durable checkpoint before risky/context-heavy transitions.
 - In overlap mode, SHADOW is read/prepare-only until durable generation transfer confirms OWNER. Never perform owner-only scheduler/control writes as SHADOW or stale generation.
 
-RUNTIME=Load and obey RUNTIME_CORE unchanged. Role/topology experiments must not weaken server-observed clock, scheduler, ownership/fencing, useful-work, terminal-gate, idle, or recovery invariants.
+RUNTIME=Load and obey RUNTIME_CORE unchanged. Role/topology experiments must not weaken work-duration, scheduler, ownership/fencing, useful-work, terminal-gate, idle, or recovery invariants.
 
-REPORT=START_MARKER_REF, END_MARKER_REF, SERVER_OBSERVED_WORK_DURATION, TARGET, NEXT/SUCCESSOR_WAKE, GENERATION, ROLE, STATUS plus only material changes/blockers.
+REPORT=START_MARKER_REF, END_MARKER_REF, WORKED, TARGET, NEXT/SUCCESSOR_WAKE, GENERATION, ROLE, STATUS plus only material changes/blockers.
 STATUS=CONTINUE | PROGRAM_COMPLETE | BLOCKED | RISK
