@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "CompactForemanCurrentState",
   "type": "object",
-  "required": ["schemaVersion", "root", "updatedAt", "status", "checkpointRef", "next"],
+  "required": ["schemaVersion", "root", "updatedAt", "status", "checkpointRef", "next", "scheduler"],
   "properties": {
     "schemaVersion": { "type": "integer", "const": 1 },
     "root": { "type": "string", "minLength": 1 },
@@ -22,7 +22,20 @@
       },
       "additionalProperties": false
     },
-    "schedulerStateRef": { "type": "string" },
+    "scheduler": {
+      "type": "object",
+      "description": "Bounded hot state needed to resume without scanning append-only scheduler history. History remains authoritative audit evidence; this object is the latest snapshot/pointer.",
+      "required": ["targetMin", "lastConfirmedSafeMin", "prearmGapMin", "mode"],
+      "properties": {
+        "targetMin": { "type": "integer", "minimum": 1 },
+        "lastConfirmedSafeMin": { "type": "integer", "minimum": 1 },
+        "prearmGapMin": { "type": "integer", "minimum": 0 },
+        "mode": { "type": "string", "minLength": 1 },
+        "priorScheduledDue": { "type": "string", "format": "date-time" },
+        "lastResultRef": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
     "historyTailRef": { "type": "string" }
   },
   "additionalProperties": false
