@@ -1,14 +1,14 @@
-# Runtime Core v0.3 — Experimental Common Invariants
+# Runtime Core v0.4 — Overlap Baton Relay Invariants
 
-Status: EXPERIMENTAL / shared by all topology variants on this branch.
+Status: EXPERIMENTAL / shared runtime core for topology variants on this branch.
 
-Purpose: keep liveness, useful-work duration, scheduling, termination, recovery, timing evidence, and handoff ownership independent from Foreman/Worker role design.
+Purpose: define clock authority, wake continuity, ownership, handoff, termination, recovery, and reporting independently from product/role logic.
 
 Normative companion specs:
 - `server-observed-work-clock.md`
 - `overlap-handoff.md`
 
-## Work-duration invariant — hard / canonical
+## 1. Work-duration invariant — hard / canonical
 
 ```text
 WORK_DURATION의 Source of Truth는
@@ -22,142 +22,182 @@ END_MARKER.created_at
 START_MARKER.created_at
 ```
 
-모델이 작성한 시간 문자열은 작업시간 판정에 사용하지 않는다.
+Model-written START/END/elapsed/local-clock strings are display metadata only.
+They MUST NOT be used for duration classification, stopping, handoff, promotion, or utilization evidence.
 
-This is the only authoritative work-duration definition in this Runtime Core.
-
-## Common wake contract
-
-1. Restore the bounded current runtime state first: active target, scheduler mode, marker issue, prior result pointer, ownership generation, and handoff mode. Read long audit history only when bounded state is missing, stale, ambiguous, or forensic reconstruction is required.
-2. Before substantive payload work, create a GitHub `[WORK_MARKER] phase=START` for a stable session id and current generation. Require successful creation and capture the GitHub comment id + server `created_at`.
-3. Payload work MUST NOT begin before the valid START marker exists.
-4. Anchor scheduler math to `START_MARKER.created_at` or `OWNER_ACTIVATED_AT` as required by scheduler mode.
-5. Perform real useful payload work continuously. Finishing one unit, opening/merging a PR, posting a checkpoint, answering one research question, or waiting on CI does not end a CONTINUE wake; select the next safe useful unit.
-6. Never sleep, pad, idle, or manufacture work merely to satisfy a duration target.
-7. Before any normal CONTINUE final/handoff, create a server-timestamped CHECK marker for the same session/generation. If `CHECK_MARKER.created_at - START_MARKER.created_at < TARGET`, final/handoff is forbidden.
-8. At actual terminal/handoff, create the matching END marker and calculate WORKED using the canonical invariant above.
-9. Keep hot current state bounded; preserve append-only marker/audit/experiment evidence separately when causal history matters.
-
-## Terminal gate — hard
-
-A normal CONTINUE wake may not end below the active useful-work target.
+If either authoritative marker timestamp is missing or ambiguous:
 
 ```text
-CONTINUE
-&& CHECK_MARKER.created_at - START_MARKER.created_at < TARGET
-=> FINAL/HANDOFF FORBIDDEN
-=> choose the next safe useful unit and continue
+WORKED = UNKNOWN
 ```
 
-At finalization:
+Never substitute model/local time.
+
+Whenever server timestamps are shown to the operator, show raw GitHub UTC first and exact Asia/Seoul conversion in parentheses. KST is display-only.
+
+## 2. No duration target
+
+There is no minimum/target/planned voluntary work duration.
+
+Work duration is an observed outcome of one of the two normal stop gates:
+- `PROGRAM_COMPLETE`
+- `SUCCESSOR_HANDOFF_COMPLETE`
+
+Do not sleep, pad, idle, invent work, or stop because a time threshold was reached.
+Finishing a subtask, PR, CI wait, checkpoint, or bounded unit is not a normal stop gate.
+
+## 3. Wake-start continuity prearm — hard
+
+Every actual invocation MUST, before substantive payload work, prearm THIS SAME canonical automation to:
 
 ```text
-CONTINUE && WORKED < TARGET
-=> INVALID_NORMAL_HANDOFF
+PREARM_NEXT = observed_wake_time + 14 minutes
 ```
 
-Early end below target is allowed only for PROGRAM_COMPLETE, BLOCKED, or RISK. BLOCKED/RISK require reasonable alternative useful paths to be exhausted and the concrete evidence recorded.
+Requirements:
+- preserve the same canonical automation identity;
+- preserve `RRULE:FREQ=HOURLY`;
+- preserve `exact_schedule`;
+- preserve `enabled=true`;
+- verify the returned live/update state;
+- do not create a replacement automation.
 
-A platform/tool hard truncation is not reclassified as a valid normal handoff.
+Each invocation gets exactly one normal scheduler mutation: this wake-start prearm.
+After the verified prearm, scheduler mutation is forbidden for the rest of that wake except one safe verification retry when the returned state is malformed or mismatched.
 
-## Scheduler modes
+The +14m offset is continuity plumbing. It is not a work-duration target.
 
-### SERIAL_PREARM_FIXED_GAP — rollback/baseline
+## 4. Scheduler lane != ownership lane
 
 ```text
-NEXT_WAKE = START_MARKER.created_at + TARGET + GAP
+PREARM DOES NOT CONFER OWNERSHIP.
 ```
 
-This remains the rollback baseline until an overlap mode is demonstrated safe.
+Every actual invocation, including a SHADOW, may perform the single wake-start +14m prearm.
 
-### OVERLAP_HANDOFF_EXPERIMENT — candidate
+Substantive authority is separate:
+- `OWNER`: may perform owner-authorized shared-state/product side effects.
+- `SHADOW`: read/prepare/validate only until durable transfer.
+- stale/non-owner generation: fail closed.
 
-```text
-SUCCESSOR_WAKE_TARGET =
-OWNER_ACTIVATED_AT + OWNER_WORK_TARGET - REQUIRED_HANDOFF_LEAD
-```
+A SHADOW prearming the next wake does not become OWNER.
 
-Initial baseline candidate is 15/12: 15m owner target, successor wake at +12m, nominal overlap 3m.
-
-Overlap mode obeys all invariants in `overlap-handoff.md`:
-- SINGLE OWNER
-- SHADOW NO WRITE
-- GENERATION FENCING
-- DURABLE HANDOFF
-- OWNER ACTIVATION ANCHOR
-- TRANSFER BEFORE FULL EXIT
-
-A shadow wake is preparation-only until durable ownership transfer is verified.
-
-The next cycle is anchored to the new `OWNER_ACTIVATED_AT`, never the earlier shadow wake.
-
-Because scheduler mutation does not expose an atomic generation compare-and-swap precondition, overlap remains experimental until repeated evidence shows zero duplicate owners, zero scheduler conflicts, zero stale-owner write success, and zero lost continuations. Main/serial mode remains rollback.
-
-## Ownership / fencing invariant
+## 5. Durable baton / generation invariant
 
 Every owner cycle has a monotonically increasing `generation`.
 
-Before an owner-only scheduler/control write:
+Only durable baton/generation transfer confers ownership.
+
+Before every OWNER-only shared-state/control/product write:
 1. re-read bounded durable ownership state;
 2. verify `role=OWNER` and expected generation;
 3. fail closed on mismatch;
 4. perform the write;
-5. persist the resulting evidence.
+5. persist evidence/checkpoint as required.
 
-After transfer, the old owner stops owner-only writes immediately.
+A successor that wakes early remains SHADOW until transfer.
 
-Where GitHub content-state is used for ownership, prefer current blob SHA + generation checks so stale state writes fail rather than silently overwrite.
+`SUCCESSOR_HANDOFF_COMPLETE` requires all of:
+- a real successor invocation;
+- successor READY evidence;
+- durable baton/ownership transfer;
+- generation advance/fencing that makes the predecessor stale.
 
-## Idle-time invariant
+After transfer, the predecessor immediately stops OWNER-only side effects.
 
-Primary objective is useful-work duty cycle, not duration in isolation.
+## 6. Normal voluntary stop gates — exactly two
 
-Measure:
-- WORKED
-- control/restore overhead
-- end-to-next-owner-substantive-work idle
-- scheduled_due vs actual_start jitter
-- successor preparation time
-- actual overlap
-- handoff idle gap
-- duplicate owner
-- scheduler conflict
-- stale-owner write outcome
-- lost continuation
-- recovery delay after genuine truncation
+The only normal voluntary stop gates are:
 
-For overlap experiments, primary performance metric is `HANDOFF_IDLE_GAP_SEC`, subject to all safety counters remaining zero.
+```text
+1. PROGRAM_COMPLETE
+2. SUCCESSOR_HANDOFF_COMPLETE
+```
 
-Do not optimize idle by accepting ambiguous ownership or unsafe scheduler churn.
+If the program is unfinished and successor transfer is not confirmed, the current OWNER MUST continue safe useful work.
 
-## Role independence
+A missing/late successor is not permission to stop.
 
-These invariants apply equally to:
-- Foreman
-- Foreman/Executor
-- bounded Worker
-- researcher/reviewer
-- future runtime roles
+## 7. Abnormal interruption states
 
-Role specs define decision rights, assignment scope, and product work. They do not redefine clock, duration, scheduler, ownership, terminal, or recovery semantics.
+`BLOCKED`, `RISK`, tool/provider failure, bootstrap fault, authority ambiguity, or platform-enforced truncation are abnormal interruption classifications, not successful normal stop gates.
 
-## State semantics
+On abnormal interruption:
+- persist the exact evidence;
+- preserve the already-prearmed recurring continuation;
+- continue any other safe useful work when available;
+- never fabricate ownership, completion, or handoff;
+- never reinterpret interruption as `SUCCESSOR_HANDOFF_COMPLETE`.
 
-Use the mutation model that matches the state:
-- bounded mutable snapshot/pointer for hot current state;
-- append-only marker/event/result history for experiments, audit, and causal reconstruction;
-- ordinary Git-tracked replacement for evolving specs/code/config;
-- explicit supersession when a prior conclusion is corrected.
+If runtime/role/ownership state cannot be reconstructed, fail closed and report `BOOTSTRAP_FAULT`.
 
-Append-only is not a universal rule.
+## 8. Marker lifecycle
 
-## Promotion discipline
+For each owner work session:
+1. create and confirm a unique GitHub START_MARKER immediately before substantive work;
+2. capture its GitHub server `created_at`;
+3. work continuously while OWNER and program remains unfinished;
+4. at `PROGRAM_COMPLETE` or after verified `SUCCESSOR_HANDOFF_COMPLETE`, create the matching END_MARKER;
+5. compute WORKED only from GitHub server timestamps.
 
-Treat these as separable experimental dimensions:
-- work-clock changes require measurement-integrity evidence;
-- scheduler/handoff changes require liveness + ownership evidence;
-- topology changes require coordination/useful-work evidence.
+END_MARKER is terminal bookkeeping for that owner session.
+Do not create END merely because a unit, target duration, CI check, or checkpoint finished.
 
-Do not attribute an outcome to topology when clock/scheduler/ownership invariants changed in the same comparison window.
+## 9. Useful-work / idle objective
 
-Keep main and serial scheduling as rollback until repeated dogfood evidence supports promotion.
+Primary performance objective is high useful-work duty cycle with correctness, ownership safety, recoverability, and continuity as hard floors.
+
+Measure separately where observable:
+- WORKED;
+- restore/control overhead;
+- prearm overhead;
+- scheduled_due vs actual wake;
+- successor preparation time;
+- actual overlap;
+- handoff idle gap;
+- duplicate owner count;
+- scheduler conflict count;
+- stale-owner write outcome;
+- lost continuation;
+- recovery delay after genuine interruption.
+
+Do not optimize idle by weakening ownership or fencing.
+
+## 10. State placement
+
+Stable execution invariants belong in:
+- deployed automation prompt; and
+- canonical GitHub runtime docs for propagation/recovery.
+
+Mutable runtime state belongs only in bounded durable GitHub state, including:
+- current OWNER/SHADOW;
+- generation;
+- baton/transfer state;
+- product checkpoint;
+- current task/step;
+- current continuation evidence.
+
+Do not duplicate mutable runtime state into the deployed prompt.
+
+## 11. Role independence
+
+These invariants apply to:
+- Foreman;
+- Foreman/Executor;
+- bounded Worker;
+- researcher/reviewer;
+- future runtime roles.
+
+Role specs define decision rights and product scope.
+They MUST NOT redefine clock, scheduler, ownership/fencing, normal stop gates, or recovery semantics.
+
+## 12. Promotion discipline
+
+The +14m overlap-baton runtime remains experimental until repeated dogfood evidence shows:
+- zero duplicate owners;
+- zero stale-owner shared-state successes;
+- zero lost continuations;
+- acceptable scheduler conflict rate;
+- materially lower handoff idle than serial fallback.
+
+Keep a serial/main rollback path until promotion evidence is sufficient.
