@@ -152,3 +152,18 @@ test('work-marker resolver ignores stale generation and rejects end bound to dup
   assert.equal(result.start.id, '11')
   assert.equal(result.workedSec, undefined)
 })
+
+
+test('experiment runtime contains no deprecated duplicate duration term', () => {
+  const files = fs.readdirSync(EXPERIMENT)
+    .filter((name) => fs.statSync(path.join(EXPERIMENT, name)).isFile())
+
+  for (const name of files) {
+    const content = fs.readFileSync(path.join(EXPERIMENT, name), 'utf8')
+    assert.doesNotMatch(
+      content,
+      /SERVER_OBSERVED_WORK_DURATION/,
+      `deprecated duration term remains in ${name}`,
+    )
+  }
+})
