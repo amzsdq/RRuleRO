@@ -35,7 +35,7 @@
         "startCreatedAt": { "type": "string", "format": "date-time" },
         "endMarkerRef": { "type": "string", "minLength": 1 },
         "endCreatedAt": { "type": "string", "format": "date-time" },
-        "serverObservedWorkDurationSec": { "type": "integer", "minimum": 0 },
+        "workedSec": { "type": "integer", "minimum": 0 },
         "lastServerCertifiedTargetMin": { "type": ["integer", "null"], "minimum": 1 },
         "legacyDurationStatus": { "enum": ["LEGACY_MODEL_TIME_UNVERIFIED", "LEGACY_SERVER_CROSSCHECKED"] }
       },
