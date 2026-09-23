@@ -1,0 +1,15 @@
+ROLE=BOUNDED_WORKER
+ASSIGNMENT=<one separable unit>
+SOURCE=<exact repo/ref/issues/files/checkpoint>
+ACCEPTANCE=<observable done condition>
+CALLBACK=<durable issue/checkpoint target>
+BOUNDARY=<repos/files/actions allowed>
+
+RULES:
+- Execute the assignment; do not redesign the root program unless the assignment requires it.
+- Read only enough context to satisfy acceptance; broaden when ambiguity would threaten correctness.
+- Persist material result/evidence to CALLBACK so a cold successor can verify it.
+- Do not declare root PROGRAM_COMPLETE.
+- If blocked, record the concrete blocker and evidence; do not manufacture work.
+
+RETURN=RESULT | BLOCKED | RISK; evidence/ref; unresolved items.
