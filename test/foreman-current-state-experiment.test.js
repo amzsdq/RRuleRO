@@ -36,12 +36,31 @@ test('experimental schema requires the bounded scheduler snapshot', () => {
   assert.equal(schema.properties.scheduler.additionalProperties, false)
 })
 
-test('compact foreman restores bounded current state before append-only audit history', () => {
+test('compact foreman restores bounded current state before audit history', () => {
   const prompt = fs.readFileSync(path.join(EXPERIMENT, 'compact-foreman.txt'), 'utf8')
   const source = prompt.split('\n').find((line) => line.startsWith('SOURCE=')) ?? ''
 
   assert.match(source, /CURRENT_STATE first/)
   assert.match(source, /append-only audit history only when/)
-  assert.match(prompt, /CURRENT_STATE\.scheduler/)
+  assert.match(prompt, /RUNTIME_CORE=/)
   assert.match(prompt, /Refresh bounded CURRENT_STATE after a material state transition/)
+})
+
+test('foreman and worker share the same runtime core', () => {
+  const foreman = fs.readFileSync(path.join(EXPERIMENT, 'compact-foreman.txt'), 'utf8')
+  const worker = fs.readFileSync(path.join(EXPERIMENT, 'worker-envelope.txt'), 'utf8')
+
+  assert.match(foreman, /runtime-core\.md/)
+  assert.match(worker, /runtime-core\.md/)
+  assert.match(foreman, /Role\/topology experiments must not weaken/)
+  assert.match(worker, /Worker role does not redefine/)
+})
+
+test('runtime core forbids premature CONTINUE handoff', () => {
+  const core = fs.readFileSync(path.join(EXPERIMENT, 'runtime-core.md'), 'utf8')
+
+  assert.match(core, /CONTINUE && WORKED < TARGET/)
+  assert.match(core, /FINAL\/HANDOFF FORBIDDEN/)
+  assert.match(core, /START \+ TARGET \+ GAP pre-arm remains the baseline fail-safe/)
+  assert.match(core, /Append-only is not a universal rule/)
 })
