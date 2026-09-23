@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CompactForemanCurrentState",
+  "type": "object",
+  "required": ["schemaVersion", "root", "updatedAt", "status", "checkpointRef", "next"],
+  "properties": {
+    "schemaVersion": { "type": "integer", "const": 1 },
+    "root": { "type": "string", "minLength": 1 },
+    "updatedAt": { "type": "string", "format": "date-time" },
+    "status": { "enum": ["CONTINUE", "PROGRAM_COMPLETE", "BLOCKED", "RISK"] },
+    "checkpointRef": { "type": "string", "minLength": 1 },
+    "mainRef": { "type": "string" },
+    "activeRefs": { "type": "array", "items": { "type": "string" }, "maxItems": 16 },
+    "hardInvariantsRef": { "type": "string" },
+    "next": {
+      "type": "object",
+      "required": ["objective"],
+      "properties": {
+        "objective": { "type": "string", "minLength": 1 },
+        "acceptance": { "type": "array", "items": { "type": "string" }, "maxItems": 12 },
+        "blockedBy": { "type": "array", "items": { "type": "string" }, "maxItems": 12 }
+      },
+      "additionalProperties": false
+    },
+    "schedulerStateRef": { "type": "string" },
+    "historyTailRef": { "type": "string" }
+  },
+  "additionalProperties": false
+}
