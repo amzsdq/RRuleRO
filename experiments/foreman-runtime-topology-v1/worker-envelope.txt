@@ -5,6 +5,14 @@ ACCEPTANCE=<observable done condition>
 CALLBACK=<durable issue/checkpoint target>
 BOUNDARY=<repos/files/actions allowed>
 
+SPAWN_GATE (all required unless independent review is itself the acceptance goal):
+- task is meaningfully separable from the Foreman's current write set;
+- expected useful payload exceeds restore/delegation/callback overhead;
+- acceptance can be stated without transferring the whole Foreman context;
+- concurrent execution will not create ambiguous ownership or merge conflicts;
+- durable callback can make the result independently verifiable.
+If any gate fails, the Foreman executes directly.
+
 RULES:
 - Execute the assignment; do not redesign the root program unless the assignment requires it.
 - Read only enough context to satisfy acceptance; broaden when ambiguity would threaten correctness.
