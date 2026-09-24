@@ -1,4 +1,4 @@
-# Runtime Core v0.7 — Wake-Start Prearm + Owner Baton + Recovery Fencing
+# Runtime Core v0.7.2 — Wake-Start Prearm + Live-Ready Baton + Recovery Fencing
 
 Status: EXPERIMENTAL / shared runtime core for topology variants on this branch.
 
@@ -286,6 +286,17 @@ checkpoint_ref=<compact ref or NONE>
 
 For a given source generation, the deterministic candidate is the valid READY event with the smallest numeric GitHub comment id, unless a prior valid generation-advance event already selected another successor.
 
+READY is a live lease-like offer, not a permanent transfer target. A READY candidate remains valid only while its invocation has not durably closed.
+
+A SHADOW with an unresolved valid READY for the current generation MUST NOT voluntarily create END_MARKER or final-report merely because preparation, CI inspection, or a local unit finished. It must remain available and poll until exactly one of:
+- a valid generation-advance event selects it;
+- another candidate wins and fences it;
+- the observed generation advances without selecting it, making it obsolete;
+- PROGRAM_COMPLETE is durably proven;
+- platform/runtime forces abnormal interruption.
+
+If an END_MARKER for the candidate exists before the OWNER's TRANSFER_COMMIT, that READY is closed/obsolete and MUST NOT be selected. If the END_MARKER and transfer race, numeric GitHub comment order is authoritative: candidate END id < TRANSFER_COMMIT id makes that transfer invalid and it does not advance generation.
+
 The SHADOW remains read/prepare-only for substantive state and polls durable state/evidence while its invocation remains available. Its single wake-start scheduler prearm is already complete; it performs no later scheduler mutation and no OWNER-only product/control writes.
 
 ### Owner transfer
@@ -293,8 +304,10 @@ The SHADOW remains read/prepare-only for substantive state and polls durable sta
 The current OWNER periodically re-reads bounded ownership and READY evidence after each bounded useful unit and before starting another long/risky unit.
 
 When a valid deterministic successor READY exists, the OWNER:
-1. persists a compact handoff checkpoint;
-2. appends one immutable transfer event:
+1. re-reads the selected candidate's START/READY/END tail immediately before committing and verifies that no END_MARKER for that candidate already exists;
+2. if the candidate already ended, marks/skips it as obsolete and continues useful work while waiting for the next live READY;
+3. otherwise persists a compact handoff checkpoint;
+4. appends one immutable transfer event:
 
 ```text
 [TRANSFER_COMMIT]
@@ -305,10 +318,11 @@ to_owner=start:<successor START id>
 to_generation=<g+1>
 ```
 
-3. re-reads generation-advance evidence;
-4. if this TRANSFER_COMMIT is the deterministic valid advance event for generation g, projects bounded state to the new OWNER/generation;
-5. immediately stops OWNER-only side effects;
-6. performs bounded close bookkeeping only.
+5. re-reads generation-advance evidence AND the selected candidate's END evidence;
+6. treats the TRANSFER_COMMIT as valid only if no candidate END_MARKER precedes the commit;
+7. if this TRANSFER_COMMIT is the deterministic valid advance event for generation g, projects bounded state to the new OWNER/generation;
+8. immediately stops OWNER-only side effects;
+9. performs bounded close bookkeeping only.
 
 The successor becomes OWNER only after it observes a valid generation-advance event selecting its own START identity and generation. It then re-reads bounded state, verifies fencing, and immediately begins substantive OWNER work. It MUST NOT schedule again because its single wake-start prearm already secured continuation.
 
@@ -316,7 +330,7 @@ The successor becomes OWNER only after it observes a valid generation-advance ev
 
 For each source generation g, authoritative ownership advancement is append-only.
 
-A valid `TRANSFER_COMMIT` or valid `ORPHAN_RECOVERY_COMMIT` is a generation-advance event. If more than one valid advance event races for the same source generation, the smallest numeric GitHub comment id wins. Issue-body write order never overrides append-only generation-advance arbitration.
+A valid `TRANSFER_COMMIT` or valid `ORPHAN_RECOVERY_COMMIT` is a generation-advance event. A TRANSFER_COMMIT targeting a candidate whose END_MARKER has a smaller numeric GitHub comment id is invalid and excluded from generation arbitration. If more than one valid advance event races for the same source generation, the smallest numeric GitHub comment id wins. Issue-body write order never overrides append-only generation-advance arbitration.
 
 Before every OWNER-only side effect, resolve the authoritative generation chain and fail closed if the bounded projection disagrees.
 
@@ -430,7 +444,7 @@ For each invocation:
 6. scheduler continuation was already secured by the wake-start prearm; on OWNER activation emit OWNER_ACTIVATED and begin work immediately without another scheduler mutation;
 7. after each bounded material unit, emit/refresh owner liveness and check for READY successor evidence;
 8. on normal transfer, old OWNER emits END only after durable transfer; on PROGRAM_COMPLETE, emit END after completion bookkeeping;
-9. any SHADOW that voluntarily closes as READY/OBSOLETE/non-selected MUST create its own END_MARKER before user-visible final reporting, so its invocation duration is measurable even though it never owned the baton;
+9. a SHADOW with unresolved valid READY MUST NOT voluntarily close. Only after it is fenced/non-selected/obsolete or PROGRAM_COMPLETE may it create END_MARKER and user-visible final reporting;
 10. after END_MARKER, perform no further substantive work; only read back timestamps, compute WORKED, and report;
 11. abnormal runtime disappearance is recovered by lease/liveness fencing rather than retroactively fabricated END.
 
