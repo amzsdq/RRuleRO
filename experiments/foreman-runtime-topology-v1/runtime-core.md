@@ -1,4 +1,4 @@
-# Runtime Core v0.4 — Overlap Baton Relay Invariants
+# Runtime Core v0.5 — Overlap Baton Relay + Deterministic Owner Bootstrap
 
 Status: EXPERIMENTAL / shared runtime core for topology variants on this branch.
 
@@ -104,6 +104,97 @@ A successor that wakes early remains SHADOW until transfer.
 - generation advance/fencing that makes the predecessor stale.
 
 After transfer, the predecessor immediately stops OWNER-only side effects.
+
+## 5A. Initial OWNER bootstrap — hard / deterministic
+
+A relay with no concrete durable OWNER MUST NOT remain SHADOW forever.
+
+The bounded state MUST represent initial ownership explicitly:
+
+```text
+ownership_state = UNINITIALIZED | OWNED
+ownership_epoch = stable bootstrap epoch token
+current_owner = NONE | <invocation identity>
+current_generation = 0 | positive integer
+```
+
+`RECONSTRUCT_ON_WAKE` is not a valid steady-state ownership value. It is only a migration/recovery hint.
+
+### Eligibility
+
+Initial bootstrap is allowed only when all are true:
+- program state is CONTINUE;
+- no concrete current OWNER exists;
+- `current_generation` is absent/0/unresolved;
+- no prior valid bootstrap winner exists for the active `ownership_epoch`;
+- this invocation has already completed and verified its wake-start +14m prearm;
+- this invocation has a durable START_MARKER/comment id.
+
+### Claim protocol
+
+An eligible invocation writes exactly one append-only GitHub issue comment:
+
+```text
+[OWNER_BOOTSTRAP_CLAIM]
+epoch=<ownership_epoch>
+candidate_start_marker_id=<GitHub START marker comment id>
+canonical_automation=<canonical automation id>
+```
+
+GitHub's returned numeric claim-comment id is the arbitration token.
+
+After the claim is created, every candidate MUST re-read the issue comments and collect all syntactically valid bootstrap claims for the same epoch.
+
+```text
+BOOTSTRAP_WINNER =
+valid claim with the smallest numeric GitHub claim-comment id
+```
+
+Do not use model time, local time, comment-body time strings, or arrival guesses to choose the winner.
+
+The winner alone may materialize:
+
+```text
+ownership_state=OWNED
+current_owner=start:<candidate_start_marker_id>
+current_generation=1
+bootstrap_claim_comment_id=<winning claim id>
+```
+
+All non-winners remain SHADOW.
+
+### Race/fencing rule
+
+Issue-body writes are not treated as atomic compare-and-swap.
+
+Therefore, before every OWNER-only side effect, the invocation MUST verify BOTH:
+1. bounded CURRENT_STATE names its invocation/generation; and
+2. deterministic bootstrap/handoff evidence still resolves to the same owner/generation.
+
+If a conflicting state write races with the bootstrap, deterministic append-only evidence wins and the loser fails closed.
+
+The initial winner becomes the first OWNER and may immediately continue substantive product work in the same invocation.
+
+### Migration rule for existing unresolved state
+
+When legacy state contains:
+
+```text
+current_owner=RECONSTRUCT_ON_WAKE
+current_generation=RECONSTRUCT_ON_WAKE
+```
+
+and no concrete recoverable owner can be proven from durable evidence, normalize it to:
+
+```text
+ownership_state=UNINITIALIZED
+current_owner=NONE
+current_generation=0
+```
+
+then execute the deterministic claim protocol above.
+
+Do not loop indefinitely in SHADOW merely because legacy state is unresolved.
 
 ## 6. Normal voluntary stop gates — exactly two
 
