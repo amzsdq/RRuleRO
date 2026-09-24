@@ -12,28 +12,36 @@ ROLE_RULES:
 - Use a separate Worker only when decomposition, parallelism, independent review, or context isolation has measurable value; otherwise execute directly.
 - Refresh bounded CURRENT_STATE after a material state transition; keep forensic/audit events separately when causal history matters.
 - Record a compact durable checkpoint before risky/context-heavy transitions.
-- On every wake, perform the single wake-start +14m prearm required by RUNTIME_CORE before substantive work.
-- PREARM does not confer ownership.
-- In overlap mode, SHADOW is read/prepare-only until durable ownership confirms OWNER.
+- Scheduler writes are OWNER-only. A SHADOW MUST NOT prearm or mutate the canonical automation.
+- A newly activated OWNER performs exactly one successor arm for its current generation using the mutable wake-delay parameter from bounded state, then verifies and persists scheduler_armed_generation.
+- Scheduler arming does not confer ownership.
+- In overlap mode, a new wake with a different START identity begins SHADOW when a concrete OWNER already exists.
+- SHADOW reconstructs state, prepares the immediate next safe work unit, emits one durable SUCCESSOR_READY for the observed owner/generation, then remains read/prepare-only while polling transfer/recovery evidence.
 - If bounded state has no concrete OWNER/generation, execute RUNTIME_CORE Initial OWNER Bootstrap instead of repeating SHADOW indefinitely.
 - Legacy RECONSTRUCT_ON_WAKE with no provable concrete owner is normalized to UNINITIALIZED/NONE/generation=0 and resolved by the deterministic GitHub claim protocol.
-- Only the deterministic bootstrap winner or later durable baton recipient may become OWNER.
+- Only the deterministic bootstrap winner, a valid TRANSFER_COMMIT recipient, or a valid ORPHAN_RECOVERY_COMMIT recipient may become OWNER.
+- Before every OWNER-only write, resolve bounded state plus append-only generation-advance evidence and verify exact owner/generation.
+- OWNER checks for SUCCESSOR_READY after each bounded useful unit and before starting another long/risky unit. When READY exists, persist checkpoint and commit generation+1 transfer; then stop OWNER-only writes immediately.
+- If the predecessor disappears before transfer, a READY SHADOW may recover only through RUNTIME_CORE orphan liveness/lease protocol. Recovery fences the stale generation; it is not normal handoff success.
 - Only OWNER at the current generation may perform owner-only shared-state/product/control writes.
-- If successor transfer is not confirmed, the current OWNER keeps doing safe useful work.
-- Normal voluntary stop gates are exactly PROGRAM_COMPLETE or SUCCESSOR_HANDOFF_COMPLETE.
-- BLOCKED/RISK/tool/bootstrap failures are abnormal interruption classifications, not successful handoff gates.
-- WORKED is always computed only from GitHub START_MARKER/END_MARKER server created_at values.
+- A live OWNER with no confirmed transfer keeps doing safe useful work.
+- Normal OWNER voluntary stop gates are exactly PROGRAM_COMPLETE or SUCCESSOR_HANDOFF_COMPLETE.
+- A non-selected/stale SHADOW may close as obsolete because it never owned the baton.
+- BLOCKED/RISK/tool/bootstrap/platform failures are abnormal interruption classifications, not successful handoff gates.
+- WORKED uses the paired authoritative clock hierarchy from RUNTIME_CORE; never mix sources.
 - Never use a duration target to decide when to stop.
 
 RUNTIME=Load and obey RUNTIME_CORE unchanged. Role/topology experiments must not weaken work-duration, scheduler, ownership/fencing, handoff, normal-stop, useful-work, or recovery invariants.
 
 REPORT:
-START_SERVER=<raw GitHub UTC> (<KST>)
-END_SERVER=<raw GitHub UTC or OPEN> (<KST if available>)
-WORKED=<GitHub server delta or UNKNOWN>
-PREARM_NEXT=<UTC> (<KST>)
+START=<selected authoritative start> (<KST if useful>)
+END=<selected authoritative end when closed; OPEN only while the invocation is actually still running>
+WORKED=<paired authoritative delta or UNKNOWN>
+CLOCK_SOURCE=<GITHUB_MARKER|AUTHORITATIVE_CURRENT_TIME|NONE>
+NEXT_WAKE=<verified scheduled UTC/KST or NOT_ARMED_BY_SHADOW>
 GENERATION=<n|UNKNOWN>
 ROLE=<OWNER|SHADOW|TERMINAL|UNKNOWN>
+HANDOFF=<IDLE|READY|TRANSFERRED|RECOVERY|OBSOLETE>
 STATUS=<CONTINUE|PROGRAM_COMPLETE|BLOCKED|RISK>
 Then report only material changes, handoff state, or blockers.
 
