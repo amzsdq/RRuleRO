@@ -433,6 +433,32 @@ Self-healing MUST NOT:
 
 If multiple repair options exist, prefer the smallest proven change that removes the observed failure mode. Record material runtime repairs in the topology experiment ledger (#73) and project the current operational state in #72.
 
+## 7B. Repeated-failure loop breaker — hard
+
+A recurring failure signature is a repair target, not a report template.
+
+If the same materially equivalent failure/blocker has already appeared in durable state/history, the next invocation MUST NOT merely re-run the same failing command/check and emit the same diagnosis.
+
+Required order:
+
+```text
+OBSERVED_FAILURE
+→ IDENTIFY_CONCRETE_CAUSE
+→ CHANGE_MECHANISM_OR_INPUT_PATH
+→ VERIFY_MATERIALLY_DIFFERENT_RESULT
+→ CONTINUE_USEFUL_WORK
+```
+
+Rules:
+- “failed again”, “still blocked”, or equivalent without a materially new repair attempt is invalid work.
+- Prefer fixing the mechanism that produces the failure over retrying the failed leaf operation.
+- When an external evidence/input dependency is missing, automate every safely automatable acquisition, validation, import, and provenance step before classifying the residue as physical/external.
+- Once a genuine physical/external residue is proven, record it once with the exact acquisition command/interface; later invocations MUST NOT repeatedly spend work on the unchanged gate. They must switch to other useful work or wait for changed evidence.
+- A canonical relay MUST NOT be disabled merely because a recoverable failure or missing-input path was encountered. Disable only for explicit operator STOP/PAUSE, PROGRAM_COMPLETE, or a separately proven safety requirement.
+- Never weaken acceptance, provenance, ownership, or generation fencing just to make the failure disappear.
+
+The objective is convergence: every recurrence of a failure signature must either remove part of its cause, produce materially new evidence, or avoid re-consuming work on the unchanged condition.
+
 ## 8. Invocation / marker lifecycle
 
 For each invocation:
