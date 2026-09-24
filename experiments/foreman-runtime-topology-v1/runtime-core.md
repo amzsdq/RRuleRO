@@ -49,6 +49,17 @@ Never compute WORKED from mixed sources such as GitHub START + external-current-
 
 Whenever GitHub server timestamps are shown to the operator, show raw GitHub UTC first and exact Asia/Seoul conversion in parentheses. External-current-time fallback may be shown in its authoritative offset-aware form plus KST display.
 
+## 1.5 Invocation lifecycle vs relay lifecycle — hard
+
+Relay-program continuity and one ChatGPT invocation's lifecycle are distinct.
+
+- `STATUS=CONTINUE` means the overall relay/program remains unfinished and the prearmed successor wake must continue it.
+- It MUST NOT be interpreted as proof that the current invocation remains executing after a user-visible final response has been emitted.
+- A user-visible final report MUST NEVER contain `END=OPEN` or `WORKED=OPEN`.
+- Immediately before any final response, capture `END_EXTERNAL_NOW`, attempt a durable GitHub `END_MARKER`, select the highest-priority complete clock pair, compute `WORKED`, and report the invocation as closed.
+- After the final response is emitted, that invocation is `CLOSED`. Continuity belongs to the durable state + prearmed next wake, not to a fictional still-open predecessor invocation.
+- If platform/runtime termination prevents an orderly close, record the interruption on the next recoverable wake; never retroactively claim the prior invocation remained open.
+
 ## 2. No duration target
 
 There is no minimum/target/planned voluntary work duration.
