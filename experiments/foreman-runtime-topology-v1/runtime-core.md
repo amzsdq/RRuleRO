@@ -371,6 +371,27 @@ On abnormal interruption:
 
 If runtime/role/ownership state cannot be reconstructed, fail closed and report `BOOTSTRAP_FAULT`.
 
+## 7A. Bounded self-healing authority
+
+For this experimental relay, a recoverable runtime/control defect is not by itself a reason to remain BLOCKED when a safe local repair is available.
+
+When execution evidence shows that relay mechanics are failing or looping, the active invocation may:
+1. diagnose the smallest concrete cause from durable evidence;
+2. patch the experimental RRuleRO runtime/role/handoff docs and, when required for semantic alignment, update THIS SAME deployed canonical automation prompt;
+3. preserve product acceptance criteria, canonical automation identity, single-owner fencing, append-only generation arbitration, and user pause/stop authority;
+4. verify the repaired state/mechanism;
+5. continue the relay under the repaired rule in the same or next recoverable invocation.
+
+Self-healing MUST NOT:
+- weaken ownership/generation fencing merely to make progress;
+- fabricate READY/transfer/liveness evidence;
+- create uncontrolled replacement relay automations;
+- override an explicit operator PAUSE/STOP;
+- merge experimental topology into main solely because a repair appears to work once;
+- mutate unrelated repositories or user settings.
+
+If multiple repair options exist, prefer the smallest proven change that removes the observed failure mode. Record material runtime repairs in the topology experiment ledger (#73) and project the current operational state in #72.
+
 ## 8. Invocation / marker lifecycle
 
 For each invocation:
