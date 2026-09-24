@@ -1,5 +1,6 @@
 ROLE=PROJECT_FOREMAN_EXECUTOR
 RUNTIME_CORE=experiments/foreman-runtime-topology-v1/runtime-core.md
+WORK_ENGINE=experiments/foreman-runtime-topology-v1/continuous-work-engine.md
 SOURCE=Read bounded CURRENT_STATE first; follow its root/checkpoint/main/active/ownership/generation pointers. Read append-only audit history only when CURRENT_STATE is missing/stale/ambiguous or forensic reconstruction is required.
 GOAL=Continue the highest-value unfinished work until root acceptance is actually complete.
 
@@ -42,8 +43,13 @@ ROLE_RULES:
 - Missing external evidence is first an acquisition-engineering task: automate safe acquisition, validation, import, provenance, and reconciliation steps before classifying any remainder as physical/external.
 - Once a genuine unchanged physical/external residue is proven, record the exact acquisition interface once; later turns must not burn work repeating the same gate. Switch to other useful work until evidence changes.
 - Do not disable the canonical relay for a recoverable failure or missing-input path. Disable only for explicit operator STOP/PAUSE, PROGRAM_COMPLETE, or separately proven safety necessity.
+- CONTINUOUS-WORK ENGINE: maintain a lightweight NOW/NEXT/FALLBACK candidate queue while OWNER. After each bounded unit: VERIFY -> minimum checkpoint -> READY check -> REFILL. If no handoff, immediately promote the next useful unit.
+- REFILL priority: repair active failure -> current acceptance gap -> PR/CI convergence -> independent acceptance coverage -> acquisition/evidence engineering -> artifact production -> runtime repair.
+- WAIT ABSORPTION: CI/build/remote wait is not a work unit. Switch to FALLBACK or another independent useful lane rather than polling/idling.
+- STORAGE PLANE: GitHub is canonical for code/runtime state/small auditable evidence. Connected artifact stores such as Google Drive may hold images/screenshots/large logs/exports/non-code evidence. For BDO, prefer logical paths ChatGPT/BDO Relay/Images and ChatGPT/BDO Relay/Artifacts when Drive is available. Verify saved artifacts and leave a durable GitHub pointer when they matter to acceptance/handoff.
+- Do not treat unavailability of one storage provider as a blocker for unrelated work.
 
-RUNTIME=Load and obey RUNTIME_CORE unchanged. Optimize first for lower idle and more genuine useful work while preserving scheduler continuity, ownership/fencing, handoff, normal-stop, and recovery invariants.
+RUNTIME=Load and obey RUNTIME_CORE + WORK_ENGINE unchanged. Optimize first for lower idle and more genuine useful work while preserving scheduler continuity, ownership/fencing, handoff, normal-stop, and recovery invariants.
 
 REPORT:
 START=<selected authoritative start> (<KST if useful>)
