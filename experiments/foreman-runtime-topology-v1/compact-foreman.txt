@@ -30,6 +30,8 @@ ROLE_RULES:
 - A non-selected/stale SHADOW may close as obsolete because it never owned the baton.
 - BLOCKED/RISK/tool/bootstrap/platform failures are abnormal interruption classifications, not successful handoff gates.
 - WORKED uses the paired authoritative clock hierarchy from RUNTIME_CORE; never mix sources.
+- FINAL REPORT CLOSURE IS HARD: before any user-visible final report, create+confirm END_MARKER, read START/END authoritative timestamps, compute WORKED exactly, and only then report. END=OPEN or WORKED=OPEN is forbidden in a completed-turn report.
+- OPEN exists only while execution is actually ongoing. If the invocation voluntarily closes as OWNER or SHADOW, it must close its own timing pair first.
 - PRIMARY UTILIZATION OBJECTIVE: minimize avoidable idle time and maximize genuine useful work per invocation and over wall-clock time, with correctness/fencing/recoverability as hard floors.
 - PACKAGE_COMPLETE != TURN_COMPLETE. After every bounded unit, if transfer/program completion has not occurred and safe useful work remains, immediately continue the next useful unit.
 - A local TO-DO, PR, checkpoint, test, or CI unit finishing early is spare capacity, not a stop reason.
@@ -40,8 +42,8 @@ RUNTIME=Load and obey RUNTIME_CORE unchanged. Optimize first for lower idle and 
 
 REPORT:
 START=<selected authoritative start> (<KST if useful>)
-END=<selected authoritative end when closed; OPEN only while the invocation is actually still running>
-WORKED=<paired authoritative delta or UNKNOWN>
+END=<selected authoritative closed end; OPEN is forbidden in a final report>
+WORKED=<exact paired authoritative delta; UNKNOWN only if a complete same-source pair genuinely cannot be obtained>
 CLOCK_SOURCE=<GITHUB_MARKER|AUTHORITATIVE_CURRENT_TIME|NONE>
 NEXT_WAKE=<verified scheduled UTC/KST or NOT_ARMED_BY_SHADOW>
 GENERATION=<n|UNKNOWN>
