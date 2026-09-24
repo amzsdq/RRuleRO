@@ -10,30 +10,44 @@ Normative companion specs:
 
 ## 1. Work-duration invariant — hard / canonical
 
-```text
-WORK_DURATION의 Source of Truth는
-모델 출력이 아니라 GitHub 서버 timestamp이다.
-```
+WORKED uses a paired external-clock hierarchy. Never mix clock sources inside one duration calculation.
+
+Priority 1 — GitHub marker pair:
 
 ```text
 WORKED =
 END_MARKER.created_at
 -
 START_MARKER.created_at
+
+CLOCK_SOURCE=GITHUB_MARKER
 ```
 
-Model-written START/END/elapsed/local-clock strings are display metadata only.
-They MUST NOT be used for duration classification, stopping, handoff, promotion, or utilization evidence.
-
-If either authoritative marker timestamp is missing or ambiguous:
+Priority 2 — authoritative external current-time pair captured at the real START and END:
 
 ```text
-WORKED = UNKNOWN
+WORKED =
+END_EXTERNAL_NOW
+-
+START_EXTERNAL_NOW
+
+CLOCK_SOURCE=AUTHORITATIVE_CURRENT_TIME
 ```
 
-Never substitute model/local time.
+Use Priority 2 only when a complete GitHub START/END marker timestamp pair cannot be obtained. START_EXTERNAL_NOW must be captured at substantive-work start and END_EXTERNAL_NOW at actual close. Neither may be inferred from model prose, an old DTSTART, last_run_time, a guessed wake time, or any stored schedule metadata.
 
-Whenever server timestamps are shown to the operator, show raw GitHub UTC first and exact Asia/Seoul conversion in parentheses. KST is display-only.
+If neither complete pair exists:
+
+```text
+WORKED=UNKNOWN
+CLOCK_SOURCE=NONE
+```
+
+Model-written START/END/elapsed/local-clock strings remain display metadata only. They MUST NOT drive duration classification, stopping, handoff, promotion, or utilization evidence.
+
+Never compute WORKED from mixed sources such as GitHub START + external-current-time END.
+
+Whenever GitHub server timestamps are shown to the operator, show raw GitHub UTC first and exact Asia/Seoul conversion in parentheses. External-current-time fallback may be shown in its authoritative offset-aware form plus KST display.
 
 ## 2. No duration target
 
