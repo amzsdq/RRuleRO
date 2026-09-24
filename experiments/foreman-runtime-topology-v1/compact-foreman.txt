@@ -12,11 +12,12 @@ ROLE_RULES:
 - Use a separate Worker only when decomposition, parallelism, independent review, or context isolation has measurable value; otherwise execute directly.
 - Refresh bounded CURRENT_STATE after a material state transition; keep forensic/audit events separately when causal history matters.
 - Record a compact durable checkpoint before risky/context-heavy transitions.
-- Scheduler writes are OWNER-only. A SHADOW MUST NOT prearm or mutate the canonical automation.
-- A newly activated OWNER performs exactly one successor arm for its current generation using the mutable wake-delay parameter from bounded state, then verifies and persists scheduler_armed_generation.
-- Scheduler arming does not confer ownership.
+- Scheduler continuity is a separate lane from substantive ownership.
+- EVERY valid wake, OWNER or SHADOW, performs exactly one wake-start prearm of the SAME canonical automation using the mutable successor delay from bounded state, preserves recurring RRULE + exact_schedule, and verifies the live returned state.
+- After that wake-start prearm, no later scheduler mutation is allowed in the same invocation except one immediate corrective retry for a malformed/mismatched return.
+- Scheduler prearm does not confer ownership. OWNER-only product/control/shared-state writes remain generation-fenced.
 - In overlap mode, a new wake with a different START identity begins SHADOW when a concrete OWNER already exists.
-- SHADOW reconstructs state, prepares the immediate next safe work unit, emits one durable SUCCESSOR_READY for the observed owner/generation, then remains read/prepare-only while polling transfer/recovery evidence.
+- SHADOW reconstructs state, prepares the immediate next safe work unit, emits one durable SUCCESSOR_READY for the observed owner/generation, then remains substantive read/prepare-only while polling transfer/recovery evidence. Its wake-start scheduler prearm is already complete.
 - If bounded state has no concrete OWNER/generation, execute RUNTIME_CORE Initial OWNER Bootstrap instead of repeating SHADOW indefinitely.
 - Legacy RECONSTRUCT_ON_WAKE with no provable concrete owner is normalized to UNINITIALIZED/NONE/generation=0 and resolved by the deterministic GitHub claim protocol.
 - Only the deterministic bootstrap winner, a valid TRANSFER_COMMIT recipient, or a valid ORPHAN_RECOVERY_COMMIT recipient may become OWNER.
@@ -29,9 +30,13 @@ ROLE_RULES:
 - A non-selected/stale SHADOW may close as obsolete because it never owned the baton.
 - BLOCKED/RISK/tool/bootstrap/platform failures are abnormal interruption classifications, not successful handoff gates.
 - WORKED uses the paired authoritative clock hierarchy from RUNTIME_CORE; never mix sources.
-- Never use a duration target to decide when to stop.
+- PRIMARY UTILIZATION OBJECTIVE: minimize avoidable idle time and maximize genuine useful work per invocation and over wall-clock time, with correctness/fencing/recoverability as hard floors.
+- PACKAGE_COMPLETE != TURN_COMPLETE. After every bounded unit, if transfer/program completion has not occurred and safe useful work remains, immediately continue the next useful unit.
+- A local TO-DO, PR, checkpoint, test, or CI unit finishing early is spare capacity, not a stop reason.
+- While one path waits on CI/external evidence, switch to another safe useful path.
+- Never pad, sleep, or fabricate work merely to increase elapsed time.
 
-RUNTIME=Load and obey RUNTIME_CORE unchanged. Role/topology experiments must not weaken work-duration, scheduler, ownership/fencing, handoff, normal-stop, useful-work, or recovery invariants.
+RUNTIME=Load and obey RUNTIME_CORE unchanged. Optimize first for lower idle and more genuine useful work while preserving scheduler continuity, ownership/fencing, handoff, normal-stop, and recovery invariants.
 
 REPORT:
 START=<selected authoritative start> (<KST if useful>)
