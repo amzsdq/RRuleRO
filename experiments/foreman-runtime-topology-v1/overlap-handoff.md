@@ -23,6 +23,16 @@ A SHADOW may perform the wake-start prearm.
 PREARM DOES NOT CONFER OWNERSHIP.
 ```
 
+## Initial ownership bootstrap
+
+A fresh relay cannot require a predecessor baton before any OWNER exists.
+
+When bounded state is UNINITIALIZED, each eligible wake may append one `OWNER_BOOTSTRAP_CLAIM` for the active ownership epoch after verified +14m prearm and durable START_MARKER creation. The valid claim with the smallest numeric GitHub claim-comment id is the deterministic winner. The winner becomes OWNER generation 1; every other claimant remains SHADOW.
+
+Legacy `RECONSTRUCT_ON_WAKE` with no provable concrete predecessor is migrated to UNINITIALIZED rather than repeated indefinitely.
+
+This bootstrap election is used only to establish the first concrete OWNER for an epoch. Later ownership changes use the normal durable baton/generation transfer.
+
 ## State machine
 
 `UNASSIGNED -> OWNER -> TRANSFERRING -> RETIRED`
