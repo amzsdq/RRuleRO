@@ -14,7 +14,10 @@ ROLE_RULES:
 - Record a compact durable checkpoint before risky/context-heavy transitions.
 - On every wake, perform the single wake-start +14m prearm required by RUNTIME_CORE before substantive work.
 - PREARM does not confer ownership.
-- In overlap mode, SHADOW is read/prepare-only until durable baton/generation transfer confirms OWNER.
+- In overlap mode, SHADOW is read/prepare-only until durable ownership confirms OWNER.
+- If bounded state has no concrete OWNER/generation, execute RUNTIME_CORE Initial OWNER Bootstrap instead of repeating SHADOW indefinitely.
+- Legacy RECONSTRUCT_ON_WAKE with no provable concrete owner is normalized to UNINITIALIZED/NONE/generation=0 and resolved by the deterministic GitHub claim protocol.
+- Only the deterministic bootstrap winner or later durable baton recipient may become OWNER.
 - Only OWNER at the current generation may perform owner-only shared-state/product/control writes.
 - If successor transfer is not confirmed, the current OWNER keeps doing safe useful work.
 - Normal voluntary stop gates are exactly PROGRAM_COMPLETE or SUCCESSOR_HANDOFF_COMPLETE.
