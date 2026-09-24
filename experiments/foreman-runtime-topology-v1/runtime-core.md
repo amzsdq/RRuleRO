@@ -49,6 +49,25 @@ Never compute WORKED from mixed sources such as GitHub START + external-current-
 
 Whenever GitHub server timestamps are shown to the operator, show raw GitHub UTC first and exact Asia/Seoul conversion in parentheses. External-current-time fallback may be shown in its authoritative offset-aware form plus KST display.
 
+### Final-report closure rule — hard
+
+```text
+FINAL_REPORT => END MUST BE CLOSED
+```
+
+A normal user-visible final report MUST NOT contain `END=OPEN` or `WORKED=OPEN`.
+
+Immediately before the final report:
+1. finish the last allowed useful/control unit for this invocation;
+2. create and confirm a durable END_MARKER;
+3. read authoritative START_MARKER.created_at and END_MARKER.created_at from the same clock source;
+4. compute WORKED exactly from that pair;
+5. only then emit the final report.
+
+`OPEN` is an internal transient state while execution is still ongoing, never a completed-turn report value.
+
+If platform-forced termination prevents END creation, no normal final report exists for that interrupted invocation; the next invocation must classify it from durable evidence as abnormal interruption. Never fabricate END or WORKED.
+
 ## 1.5 Invocation lifecycle vs relay lifecycle — hard
 
 Relay-program continuity and one ChatGPT invocation's lifecycle are distinct, but an active OWNER MUST NOT voluntarily finalize merely because it has produced a checkpoint, finished a unit, or prearmed a successor.
@@ -411,8 +430,9 @@ For each invocation:
 6. scheduler continuation was already secured by the wake-start prearm; on OWNER activation emit OWNER_ACTIVATED and begin work immediately without another scheduler mutation;
 7. after each bounded material unit, emit/refresh owner liveness and check for READY successor evidence;
 8. on normal transfer, old OWNER emits END only after durable transfer; on PROGRAM_COMPLETE, emit END after completion bookkeeping;
-9. a SHADOW that loses arbitration may close as obsolete without an OWNER END marker;
-10. abnormal runtime disappearance is recovered by lease/liveness fencing rather than retroactively fabricated END.
+9. any SHADOW that voluntarily closes as READY/OBSOLETE/non-selected MUST create its own END_MARKER before user-visible final reporting, so its invocation duration is measurable even though it never owned the baton;
+10. after END_MARKER, perform no further substantive work; only read back timestamps, compute WORKED, and report;
+11. abnormal runtime disappearance is recovered by lease/liveness fencing rather than retroactively fabricated END.
 
 WORKED for a closed OWNER session uses the highest-priority complete authoritative clock pair defined in section 1.
 
