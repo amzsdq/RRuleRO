@@ -38,6 +38,10 @@ ROLE_RULES:
 - A local TO-DO, PR, checkpoint, test, or CI unit finishing early is spare capacity, not a stop reason.
 - While one path waits on CI/external evidence, switch to another safe useful path.
 - Never pad, sleep, or fabricate work merely to increase elapsed time.
+- REPEATED-FAILURE LOOP BREAKER: if durable evidence already contains the same material failure/blocker, do not simply retry and report it again. Diagnose the concrete cause, change the mechanism/input path, verify a materially different result, then continue.
+- Missing external evidence is first an acquisition-engineering task: automate safe acquisition, validation, import, provenance, and reconciliation steps before classifying any remainder as physical/external.
+- Once a genuine unchanged physical/external residue is proven, record the exact acquisition interface once; later turns must not burn work repeating the same gate. Switch to other useful work until evidence changes.
+- Do not disable the canonical relay for a recoverable failure or missing-input path. Disable only for explicit operator STOP/PAUSE, PROGRAM_COMPLETE, or separately proven safety necessity.
 
 RUNTIME=Load and obey RUNTIME_CORE unchanged. Optimize first for lower idle and more genuine useful work while preserving scheduler continuity, ownership/fencing, handoff, normal-stop, and recovery invariants.
 
