@@ -7,6 +7,7 @@ Purpose: define clock authority, wake continuity, ownership, handoff, terminatio
 Normative companion specs:
 - `server-observed-work-clock.md`
 - `overlap-handoff.md`
+- `continuous-work-engine.md`
 
 ## 1. Work-duration invariant — hard / canonical
 
@@ -536,6 +537,33 @@ After each bounded useful unit:
 5. if SHADOW, maximize useful preparation/reconstruction that does not violate OWNER-only mutation rules.
 
 Control-plane ceremony must be kept bounded. Prefer direct product progress over repeated topology bookkeeping unless the latter is necessary to fix measured idle/continuity failures.
+
+## 11B. Continuous Work Engine — hard for utilization
+
+Load and apply `continuous-work-engine.md`.
+
+The successful long-turn pattern is reproduced by maintaining a live supply of real work, not by imposing elapsed-time padding.
+
+At each bounded unit boundary, run:
+
+```text
+VERIFY
+→ MINIMUM CHECKPOINT
+→ READY CHECK
+→ REFILL
+```
+
+REFILL selects the highest-value safe runnable candidate across repair, current acceptance gaps, PR/CI convergence, independent acceptance coverage, acquisition/evidence engineering, artifact production, then runtime repair.
+
+OWNER should keep up to three candidates conceptually available: NOW / NEXT / FALLBACK. When NOW completes, promote NEXT immediately; when one path waits, execute FALLBACK.
+
+Storage is capability-driven:
+- GitHub remains the source/control plane for code, state, small auditable evidence, and pointers.
+- Connected artifact storage such as Google Drive may be used for screenshots, images, large logs, exports, and non-code evidence when more appropriate.
+- A material external artifact must be verified after save/upload and referenced durably from the source/control plane when it affects acceptance or handoff.
+- Storage-provider unavailability is not a reason to stop unrelated useful work.
+
+A short invocation with runnable safe work remaining is a utilization defect. Diagnose premature finalization, too-narrow queueing, repeated blocker polling, CI wait idling, ownership overrestriction, or control-plane ceremony rather than adding fake duration.
 
 ## 12. Promotion discipline
 
