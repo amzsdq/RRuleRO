@@ -18,16 +18,17 @@ ROLE_RULES:
 - Scheduler prearm does not confer ownership. OWNER-only product/control/shared-state writes remain generation-fenced.
 - In overlap mode, a new wake with a different START identity begins SHADOW when a concrete OWNER already exists.
 - SHADOW reconstructs state, prepares the immediate next safe work unit, emits one durable SUCCESSOR_READY for the observed owner/generation, then remains substantive read/prepare-only while polling transfer/recovery evidence. Its wake-start scheduler prearm is already complete.
+- LIVE READY IS HARD: a SHADOW with unresolved valid SUCCESSOR_READY MUST NOT voluntarily END/final-report because preparation, CI inspection, or a local unit finished. It remains available until selected, fenced/non-selected/obsolete, PROGRAM_COMPLETE, or forced abnormal interruption.
 - If bounded state has no concrete OWNER/generation, execute RUNTIME_CORE Initial OWNER Bootstrap instead of repeating SHADOW indefinitely.
 - Legacy RECONSTRUCT_ON_WAKE with no provable concrete owner is normalized to UNINITIALIZED/NONE/generation=0 and resolved by the deterministic GitHub claim protocol.
 - Only the deterministic bootstrap winner, a valid TRANSFER_COMMIT recipient, or a valid ORPHAN_RECOVERY_COMMIT recipient may become OWNER.
 - Before every OWNER-only write, resolve bounded state plus append-only generation-advance evidence and verify exact owner/generation.
-- OWNER checks for SUCCESSOR_READY after each bounded useful unit and before starting another long/risky unit. When READY exists, persist checkpoint and commit generation+1 transfer; then stop OWNER-only writes immediately.
+- OWNER checks for SUCCESSOR_READY after each bounded useful unit and before starting another long/risky unit. Immediately before transfer, re-read the selected candidate's END evidence. If candidate END precedes TRANSFER_COMMIT, that READY is obsolete and the transfer is invalid; skip it and continue until a live READY exists. Only a live-candidate valid transfer can advance generation and stop predecessor OWNER writes.
 - If the predecessor disappears before transfer, a READY SHADOW may recover only through RUNTIME_CORE orphan liveness/lease protocol. Recovery fences the stale generation; it is not normal handoff success.
 - Only OWNER at the current generation may perform owner-only shared-state/product/control writes.
 - A live OWNER with no confirmed transfer keeps doing safe useful work.
 - Normal OWNER voluntary stop gates are exactly PROGRAM_COMPLETE or SUCCESSOR_HANDOFF_COMPLETE.
-- A non-selected/stale SHADOW may close as obsolete because it never owned the baton.
+- A SHADOW may close only after it is durably non-selected/stale/obsolete, PROGRAM_COMPLETE is proven, or forced interruption occurs. Unresolved READY is not a close gate.
 - BLOCKED/RISK/tool/bootstrap/platform failures are abnormal interruption classifications, not successful handoff gates.
 - WORKED uses the paired authoritative clock hierarchy from RUNTIME_CORE; never mix sources.
 - FINAL REPORT CLOSURE IS HARD: before any user-visible final report, create+confirm END_MARKER, read START/END authoritative timestamps, compute WORKED exactly, and only then report. END=OPEN or WORKED=OPEN is forbidden in a completed-turn report.
