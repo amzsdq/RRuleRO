@@ -1,4 +1,4 @@
-# Runtime Core v0.6 — Owner-Activated Successor Handoff + Recovery Fencing
+# Runtime Core v0.7 — Wake-Start Prearm + Owner Baton + Recovery Fencing
 
 Status: EXPERIMENTAL / shared runtime core for topology variants on this branch.
 
@@ -59,58 +59,66 @@ Relay-program continuity and one ChatGPT invocation's lifecycle are distinct, bu
 - Platform/runtime forced termination can still occur outside model control. That is `ABNORMAL_INTERRUPTION`, never a normal handoff. Recovery must use durable liveness/lease evidence and generation fencing.
 - Never rewrite an abnormal interruption as a successful close merely to make reporting neat.
 
-## 2. No duration target
+## 2. Primary utilization objective — hard
 
-There is no minimum/target/planned voluntary work duration.
+The top operational objective is:
 
-Work duration is an observed outcome of one of the two normal stop gates:
-- `PROGRAM_COMPLETE`
-- `SUCCESSOR_HANDOFF_COMPLETE`
+1. minimize avoidable idle time between useful work;
+2. maximize genuine useful work performed per invocation and over wall-clock time.
 
-Do not sleep, pad, idle, invent work, or stop because a time threshold was reached.
-Finishing a subtask, PR, CI wait, checkpoint, or bounded unit is not a normal stop gate.
+Correctness, single-owner substantive authority, generation fencing, recoverability, and user STOP/PAUSE remain hard floors.
 
-## 3. Owner-activated successor scheduling — hard
+```text
+PACKAGE_COMPLETE != TURN_COMPLETE
+```
 
-Scheduler mutation belongs to the substantive OWNER, not to every wake.
+A nonterminal invocation MUST keep chaining the next safe goal-directed useful unit while execution remains available. Finishing a subtask, PR, CI wait, checkpoint, bounded unit, or local TO-DO is not a voluntary stop reason.
 
-A newly activated OWNER MUST arm exactly one future successor wake on THIS SAME canonical automation after ownership is durably verified.
+When one path is waiting on CI/external evidence, switch to another independent safe useful unit instead of idling.
+
+Do not sleep, pad, repeat converged analysis, fabricate work, or lengthen elapsed time without useful output. Longer work time means more genuine useful work, not waiting.
+
+## 3. Wake-start scheduler prearm — hard
+
+Scheduler continuity is a separate lane from substantive OWNER authority.
+
+Every actual invocation, whether it will resolve as OWNER or SHADOW, MUST perform exactly one wake-start prearm on THIS SAME canonical automation before substantive work or prolonged reconstruction.
 
 The wake delay is a mutable empirical runtime parameter from bounded durable state:
 
 ```text
 SUCCESSOR_WAKE_AT =
-OWNER_ACTIVATED_AT
+FRESH_PREARM_BASE
 +
 successor_wake_delay
 ```
 
-Current experiments may use 14 minutes, but +14m is NOT a permanent invariant.
-
 Requirements:
+- obtain a fresh authoritative current time immediately before the scheduler write;
 - preserve the same canonical automation identity;
-- preserve the recurring RRULE and exact-schedule semantics required by the active runtime;
-- verify the returned scheduler state;
-- do not create a replacement automation merely for normal continuation;
-- persist `scheduler_armed_generation=<current_generation>` after verified arming;
-- do not arm twice for the same generation except one corrective retry for a malformed/mismatched returned state.
+- preserve the recurring `RRULE:FREQ=HOURLY` fallback and exact_schedule;
+- set DTSTART to the near-future successor target from bounded state;
+- verify the returned live scheduler state;
+- never create a replacement automation for normal continuation;
+- allow at most one immediate corrective retry if the returned state is malformed/mismatched;
+- after verified prearm, do not mutate the scheduler again during that invocation.
 
-A wake that starts as SHADOW MUST NOT mutate the scheduler.
+The hourly RRULE is crash/failure fallback, not the desired normal cadence. Normal continuity depends on each wake shifting DTSTART forward again before useful work.
 
-After a SHADOW becomes OWNER through durable transfer/recovery, it immediately performs the one owner-activation scheduler arm for its new generation.
-
-## 4. Scheduler lane follows ownership
+## 4. Scheduler lane is independent of substantive ownership
 
 ```text
-SCHEDULER_WRITE_AUTHORITY = CURRENT_OWNER_GENERATION
+PREARM_PERMISSION = EVERY_VALID_WAKE_EXACTLY_ONCE
+SUBSTANTIVE_WRITE_AUTHORITY = CURRENT_OWNER_GENERATION_ONLY
 ```
 
-- OWNER: may perform the single owner-activation successor arm for its generation.
-- SHADOW: no scheduler mutation.
-- stale/non-owner generation: no scheduler mutation.
-- scheduler arming never creates ownership; ownership must already be durable before the arm.
+- OWNER and SHADOW may each perform the single wake-start scheduler prearm.
+- PREARM never grants product/control/shared-state ownership.
+- SHADOW remains forbidden from OWNER-only product/control writes.
+- stale/non-owner generations remain fenced from substantive writes.
+- no scheduler mutation is allowed later in the same invocation after the wake-start prearm.
 
-This restores single-scheduler-writer semantics and prevents overlapping wakes from racing on the canonical DTSTART.
+This separation prevents a SHADOW from stranding the relay on the hourly fallback while preserving single-owner substantive state mutation.
 
 ## 5. Durable baton / generation invariant
 
@@ -157,7 +165,7 @@ Initial bootstrap is allowed only when all are true:
 - no concrete current OWNER exists;
 - `current_generation` is absent/0/unresolved;
 - no prior valid bootstrap winner exists for the active `ownership_epoch`;
-- this invocation has already completed and verified its wake-start +14m prearm;
+- this invocation has already completed and verified its wake-start prearm using the current bounded successor delay;
 - this invocation has a durable START_MARKER/comment id.
 
 ### Claim protocol
@@ -259,7 +267,7 @@ checkpoint_ref=<compact ref or NONE>
 
 For a given source generation, the deterministic candidate is the valid READY event with the smallest numeric GitHub comment id, unless a prior valid generation-advance event already selected another successor.
 
-The SHADOW remains read/prepare-only and polls durable state/evidence while its invocation remains available. It does not schedule the next wake and does not perform OWNER-only product/control writes.
+The SHADOW remains read/prepare-only for substantive state and polls durable state/evidence while its invocation remains available. Its single wake-start scheduler prearm is already complete; it performs no later scheduler mutation and no OWNER-only product/control writes.
 
 ### Owner transfer
 
@@ -283,7 +291,7 @@ to_generation=<g+1>
 5. immediately stops OWNER-only side effects;
 6. performs bounded close bookkeeping only.
 
-The successor becomes OWNER only after it observes a valid generation-advance event selecting its own START identity and generation. It then re-reads bounded state, verifies fencing, and performs the one owner-activation successor schedule arm for its new generation before substantive OWNER work.
+The successor becomes OWNER only after it observes a valid generation-advance event selecting its own START identity and generation. It then re-reads bounded state, verifies fencing, and immediately begins substantive OWNER work. It MUST NOT schedule again because its single wake-start prearm already secured continuation.
 
 ### Generation-advance arbitration
 
@@ -400,7 +408,7 @@ For each invocation:
 3. if no owner exists, run initial bootstrap;
 4. if another owner exists, become SHADOW, prepare, and publish SUCCESSOR_READY;
 5. if selected by TRANSFER_COMMIT or ORPHAN_RECOVERY_COMMIT, become OWNER at generation g+1;
-6. on OWNER activation, emit OWNER_ACTIVATED, arm exactly one successor wake for the new generation, then work continuously;
+6. scheduler continuation was already secured by the wake-start prearm; on OWNER activation emit OWNER_ACTIVATED and begin work immediately without another scheduler mutation;
 7. after each bounded material unit, emit/refresh owner liveness and check for READY successor evidence;
 8. on normal transfer, old OWNER emits END only after durable transfer; on PROGRAM_COMPLETE, emit END after completion bookkeeping;
 9. a SHADOW that loses arbitration may close as obsolete without an OWNER END marker;
@@ -410,7 +418,7 @@ WORKED for a closed OWNER session uses the highest-priority complete authoritati
 
 ## 9. Useful-work / idle objective
 
-Primary performance objective is high useful-work duty cycle with correctness, ownership safety, recoverability, and continuity as hard floors.
+Primary performance objective is minimum avoidable idle time and maximum genuine useful-work duty cycle. Correctness, ownership safety, recoverability, and continuity are hard floors.
 
 Measure separately where observable:
 - WORKED;
@@ -455,6 +463,19 @@ These invariants apply to:
 
 Role specs define decision rights and product scope.
 They MUST NOT redefine clock, scheduler, ownership/fencing, normal stop gates, or recovery semantics.
+
+## 11A. Same-turn work chaining — hard
+
+For an unfinished program, local package completion triggers immediate refill, not turn completion.
+
+After each bounded useful unit:
+1. persist only the minimum durable evidence needed for recovery;
+2. check deterministic ownership/fencing and READY evidence;
+3. if transfer is not complete and safe useful work remains, immediately start the next useful unit;
+4. if READY exists and normal transfer is possible, hand off promptly rather than starting a new long/risky unit;
+5. if SHADOW, maximize useful preparation/reconstruction that does not violate OWNER-only mutation rules.
+
+Control-plane ceremony must be kept bounded. Prefer direct product progress over repeated topology bookkeeping unless the latter is necessary to fix measured idle/continuity failures.
 
 ## 12. Promotion discipline
 
