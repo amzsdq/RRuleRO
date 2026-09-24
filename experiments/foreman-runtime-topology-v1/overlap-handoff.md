@@ -1,128 +1,206 @@
-# Overlap Handoff Relay v2 — +14m Baton Prearm
+# Overlap Handoff Relay v3 — Owner-Activated Successor Baton
 
 Status: EXPERIMENTAL / not promoted.
 Rollback baseline: serial single-executor behavior on main.
 
-Goal: minimize handoff idle while preserving exactly-one-owner substantive authority.
+Goal: minimize inter-run idle while preserving exactly-one-owner substantive and scheduler authority.
 
-## Wake model
+## 1. Identity
 
-Every actual invocation performs exactly one continuity prearm before substantive work:
-
-```text
-PREARM_NEXT = observed_wake_time + 14 minutes
-```
-
-The same canonical automation is updated while preserving recurring RRULE, exact_schedule, and enabled state.
-
-This +14m value is a scheduler lead/continuity parameter, NOT a work-duration target.
-
-A SHADOW may perform the wake-start prearm.
+Every invocation creates a durable START_MARKER and derives:
 
 ```text
-PREARM DOES NOT CONFER OWNERSHIP.
+INVOCATION_ID=start:<START_MARKER_COMMENT_ID>
 ```
 
-## Initial ownership bootstrap
+That identity is never inherited from an earlier invocation.
 
-A fresh relay cannot require a predecessor baton before any OWNER exists.
+## 2. Scheduler ownership
 
-When bounded state is UNINITIALIZED, each eligible wake may append one `OWNER_BOOTSTRAP_CLAIM` for the active ownership epoch after verified +14m prearm and durable START_MARKER creation. The valid claim with the smallest numeric GitHub claim-comment id is the deterministic winner. The winner becomes OWNER generation 1; every other claimant remains SHADOW.
+Only the current OWNER generation may mutate the canonical scheduler.
 
-Legacy `RECONSTRUCT_ON_WAKE` with no provable concrete predecessor is migrated to UNINITIALIZED rather than repeated indefinitely.
+A newly activated OWNER arms exactly one successor wake using the bounded empirical parameter:
 
-This bootstrap election is used only to establish the first concrete OWNER for an epoch. Later ownership changes use the normal durable baton/generation transfer.
+```text
+SUCCESSOR_WAKE_AT =
+OWNER_ACTIVATED_AT
++
+successor_wake_delay
+```
 
-## State machine
+Current state may use 14m as an experiment, but it is not a permanent invariant.
 
-`UNASSIGNED -> OWNER -> TRANSFERRING -> RETIRED`
+SHADOW:
+- does NOT mutate scheduler;
+- does NOT inherit predecessor scheduler authority.
 
-A successor may wake before transfer:
+After transfer/recovery, the new OWNER immediately arms the next successor for its own generation.
 
-`SCHEDULED_SUCCESSOR -> SHADOW -> OWNER`
+## 3. Initial bootstrap
 
-### OWNER
-- exactly one current generation owns substantive shared-state/product/control writes;
-- keeps doing safe useful work while the program is unfinished and no verified successor transfer exists;
-- writes a recoverable compact checkpoint before transfer;
-- may close normally only through PROGRAM_COMPLETE or SUCCESSOR_HANDOFF_COMPLETE.
+When no concrete owner exists:
+- eligible invocation writes OWNER_BOOTSTRAP_CLAIM;
+- smallest valid numeric GitHub claim comment id wins;
+- winner becomes generation 1 OWNER;
+- winner emits OWNER_ACTIVATED and arms the first successor.
+
+Bootstrap is used only for the first concrete owner of an ownership epoch.
+
+## 4. Normal steady-state handoff
+
+State sequence:
+
+```text
+OWNER(g)
+  -> SUCCESSOR_AWAKE(SHADOW)
+  -> SUCCESSOR_READY
+  -> TRANSFER_COMMIT
+  -> OWNER(g+1)
+```
 
 ### SHADOW
-- performs its single wake-start +14m prearm;
-- may read durable state/checkpoints;
-- may prepare the next work unit, sources, branch/PR context, and acceptance checks;
-- may write only immutable own evidence when needed;
-- MUST NOT perform OWNER-only shared-state/product/control writes;
-- MUST NOT claim completion or ownership.
 
-### Transfer
-1. Successor has actually woken and produced READY evidence.
-2. Current OWNER finalizes the latest durable checkpoint.
-3. Durable transfer advances `generation`.
-4. Durable ownership state records successor as new OWNER.
-5. Old OWNER immediately stops OWNER-only side effects.
-6. New OWNER re-reads durable state and verifies its generation before any OWNER-only write.
-7. Old OWNER performs only bounded close bookkeeping and creates its END marker.
-8. The new OWNER continues work; its already-performed wake-start prearm provides the next continuation.
+A new wake seeing another concrete OWNER:
+1. restores bounded state;
+2. prepares the immediate next safe unit;
+3. appends exactly one immutable SUCCESSOR_READY:
 
-## Hard safety invariants
+```text
+[SUCCESSOR_READY]
+expected_owner=<owner>
+expected_generation=<g>
+candidate_start_marker_id=<self START id>
+checkpoint_ref=<ref|NONE>
+```
 
-1. SINGLE OWNER — exactly one generation may perform OWNER-only substantive writes.
-2. SHADOW PREARM ALLOWED — scheduler continuity prearm is permitted before ownership.
-3. PREARM != OWNERSHIP — scheduler mutation never grants substantive authority.
-4. GENERATION FENCING — every handoff advances generation; stale owner writes fail closed.
-5. DURABLE HANDOFF — successor resumes from durable state/checkpoint, not prior chat-response copying.
-6. READY BEFORE TRANSFER — successor must be a real invocation, not a planned future wake.
-7. TRANSFER BEFORE PREDECESSOR CLOSE — predecessor cannot normally END before durable transfer is confirmed.
-8. NO DURATION STOP — elapsed time, target minutes, PR completion, or CI completion do not grant stop authority.
-9. TWO NORMAL STOP GATES — PROGRAM_COMPLETE or SUCCESSOR_HANDOFF_COMPLETE only.
+For a source generation, the smallest valid READY comment id is the deterministic candidate unless an earlier valid generation-advance event already selected a successor.
 
-## Missing/late successor
+The SHADOW may read/prepare/poll only. It may not perform OWNER-only product/control writes and may not schedule another wake.
 
-If successor wake/READY/transfer is late or absent:
-- current OWNER keeps doing safe useful work;
-- already-prearmed continuation remains in force;
-- do not create END merely because the expected handoff time passed.
+### OWNER
 
-## Scheduler mutation rule
+A live OWNER:
+- continues useful work;
+- emits liveness after bounded material units;
+- re-reads READY evidence after each bounded unit and before another long/risky unit.
 
-Each invocation gets exactly one normal scheduler mutation: wake-start +14m prearm.
+When deterministic READY exists:
+1. persist compact checkpoint;
+2. append immutable TRANSFER_COMMIT;
+3. re-read append-only generation-advance evidence;
+4. if the commit wins arbitration, project bounded state to successor/g+1;
+5. stop OWNER-only writes immediately;
+6. close only with bounded bookkeeping.
 
-After that, no further scheduler mutation is allowed in the same wake except one safe verification retry if the returned state is malformed/mismatched.
+TRANSFER_COMMIT form:
 
-This separation reduces scheduler races while allowing SHADOW continuity insurance.
+```text
+[TRANSFER_COMMIT]
+from_owner=<owner>
+from_generation=<g>
+ready_comment_id=<selected ready>
+to_owner=start:<successor START id>
+to_generation=<g+1>
+```
 
-## Fencing requirement / activation gate
+### New OWNER
 
-Overlap mode MUST NOT be promoted merely because concurrent wakes are possible.
+The successor becomes OWNER only after observing a valid winning generation-advance event selecting its own START identity. Then it:
+- verifies bounded projection + append-only evidence;
+- emits OWNER_ACTIVATED;
+- arms exactly one next successor wake for its new generation;
+- starts OWNER work.
 
-Before promotion, repeated dogfood must demonstrate fail-closed stale-writer behavior and acceptable scheduler behavior.
+## 5. Generation arbitration
 
-Because scheduler mutation itself has no atomic generation CAS, scheduler continuity is intentionally separated from substantive ownership fencing.
+For each source generation, authoritative advancement is append-only.
 
-## Metrics
+Valid event types:
+- TRANSFER_COMMIT
+- ORPHAN_RECOVERY_COMMIT
 
-Primary:
-- HANDOFF_IDLE_GAP_SEC
+If valid advance events race for the same source generation, the smallest numeric GitHub comment id wins.
 
-Also record:
-- scheduled due vs actual wake;
-- successor preparation time;
-- READY-before-transfer;
-- ownership transfer latency;
-- actual overlap;
-- duplicate owner;
-- scheduler conflict;
-- stale-owner write blocked/succeeded;
-- lost continuation;
-- successor first substantive-work time;
-- long-run useful-work utilization;
-- WORKED from GitHub server markers.
+Issue-body update order is only a projection; it never overrides append-only arbitration.
 
-Safety acceptance:
-- duplicate owner = 0;
-- stale owner substantive write success = 0;
-- lost continuation = 0;
-- scheduler conflicts remain bounded/non-destructive.
+Every OWNER-only write must resolve the authoritative generation chain first.
 
-Promotion principle: prefer the simplest overlap-baton mechanism that keeps safety counters at zero and materially reduces handoff idle. The +14m prearm is the current experimental baseline, not a permanent architecture constant.
+## 6. Abnormal predecessor loss / orphan recovery
+
+A Scheduled Task invocation can disappear before normal handoff. This must not leave SHADOW forever.
+
+OWNER liveness evidence:
+- OWNER_ACTIVATED
+- OWNER_HEARTBEAT
+- later owner-specific material checkpoint/progress explicitly tagged with owner+generation
+- normal TRANSFER_COMMIT / PROGRAM_COMPLETE terminal evidence
+
+A READY SHADOW may recover only if:
+1. no generation-advance event exists;
+2. it writes RECOVERY_PROBE and obtains authoritative server time;
+3. the latest valid owner liveness for the source generation is older than bounded `orphan_timeout_sec`.
+
+Then it writes ORPHAN_RECOVERY_CLAIM. Smallest valid numeric claim id wins.
+
+Winner writes ORPHAN_RECOVERY_COMMIT:
+
+```text
+[ORPHAN_RECOVERY_COMMIT]
+from_owner=<stale owner>
+from_generation=<g>
+claim_comment_id=<winning claim>
+to_owner=start:<candidate START id>
+to_generation=<g+1>
+```
+
+That commit joins normal generation arbitration. Once it wins, the stale owner generation is fenced. A merely slow predecessor must fail closed before its next OWNER-only write.
+
+Recovery is abnormal continuity, not SUCCESSOR_HANDOFF_COMPLETE.
+
+## 7. Owner liveness cadence
+
+The OWNER should emit OWNER_HEARTBEAT after each bounded material unit and before/after long waits when practical.
+
+The timeout is intentionally mutable/empirical. It must be long enough to avoid false takeover during legitimate long tool/CI operations and short enough to recover from vanished owners.
+
+Current provisional value lives only in #72 CURRENT_STATE.
+
+## 8. Stop semantics
+
+OWNER normal voluntary stop gates:
+- PROGRAM_COMPLETE
+- SUCCESSOR_HANDOFF_COMPLETE
+
+SHADOW may close if:
+- another successor wins deterministic arbitration;
+- it becomes stale/obsolete;
+- program completed before it acquired ownership.
+
+Platform/runtime disappearance of an OWNER is ABNORMAL_INTERRUPTION and must be recovered, not reclassified as successful handoff.
+
+## 9. Metrics
+
+Record where authoritative:
+- owner activation
+- successor scheduled time
+- successor actual wake
+- successor READY
+- transfer commit
+- new owner activation
+- predecessor END
+- successor first OWNER work
+- handoff idle gap
+- overlap
+- orphan recovery delay
+- duplicate owner count
+- scheduler conflict count
+- stale-owner write blocked/succeeded
+- lost continuation
+
+Safety target:
+- duplicate OWNER substantive writes = 0
+- stale-owner write success = 0
+- scheduler writers per generation = 1
+- lost continuation = 0
+
+Promotion requires repeated live dogfood with authoritative timing.
