@@ -51,7 +51,7 @@ Important files at that branch/ref:
 - `experiments/foreman-runtime-topology-v1/server-observed-work-clock.md`
   - blob: `8a5182741b4c10ed3d57dcaaed8f2e3e2c52566d`
 - `experiments/foreman-runtime-topology-v1/current-state-schema.json`
-  - blob: `0858022efe8c787b170a2f3d7be309cce50c99`
+  - blob: `0858022efe8c787b17068a2f3d7be309cce50c99`
 - `experiments/foreman-runtime-topology-v1/current-state.example.json`
   - blob: `9b96bf6a2138d0f643ca3cb35a3ec5c81eaadbe2`
 - `experiments/foreman-runtime-topology-v1/result-schema.md`
